@@ -1,0 +1,3 @@
+Variant,Avg_Norm%,Std_Norm,Avg_Wait,Avg_POIs,Avg_Time(s),Conv_95%_Gen,Norm_C101,Norm_C201,Norm_R101,Norm_R201,Norm_RC101,Norm_RC201
+with_urgency,93.98,4.71,25.9,20.7,7.629,17.9,97.5,95.4,92.73,86.37,100.0,91.89
+no_urgency,93.63,5.24,27.5,21.3,7.106,14.5,97.81,93.68,92.47,84.48,100.0,93.33

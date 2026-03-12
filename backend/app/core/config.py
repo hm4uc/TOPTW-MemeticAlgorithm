@@ -47,3 +47,17 @@ PENALTY_LATE_ARRIVAL: float = 100.0  # Đến sau close_time  (ràng buộc cứ
 PENALTY_LATE_RETURN:  float = 100.0  # Về depot trễ        (ràng buộc cứng)
 PENALTY_BUDGET:       float =   0.5  # Vượt ngân sách      (ràng buộc mềm)
 PENALTY_WAIT:         float =   0.2  # Thời gian chờ       (chất lượng trải nghiệm)
+
+# =============================================================================
+#  URGENCY HEURISTIC PARAMETERS
+#
+#  Cải tiến Labadie ratio: thêm yếu tố "độ khẩn cấp" (time-window urgency)
+#  để ưu tiên POI sắp đóng cửa khi khởi tạo quần thể và greedy refill.
+#
+#  Công thức: urgency_factor = 1 + URGENCY_ALPHA / max(time_remaining, ε)
+#  URGENCY_CAP giới hạn trên để urgency không quá áp đảo score/distance.
+# =============================================================================
+
+URGENCY_ALPHA: float = 10.0   # Hệ số khẩn cấp (α): càng cao → càng ưu tiên POI sắp đóng
+URGENCY_CAP:   float = 5.0    # Giới hạn trên urgency_factor (tránh outlier)
+

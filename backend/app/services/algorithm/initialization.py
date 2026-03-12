@@ -13,7 +13,7 @@ from typing import List
 
 from app.models.domain import POI, Individual
 from app.models.requests import UserPreferences
-from app.core.config import POPULATION_SIZE, HEURISTIC_COUNT, RANDOM_COUNT, RCL_SIZE
+from app.core.config import POPULATION_SIZE, HEURISTIC_COUNT, RANDOM_COUNT, RCL_SIZE, URGENCY_ALPHA, URGENCY_CAP
 from app.services.algorithm.fitness import (
     get_travel_time,
     try_add_poi,
@@ -25,13 +25,41 @@ from app.services.algorithm.fitness import (
 # =============================================================================
 
 def _labadie_ratio(poi: POI, current_location: POI,
-                   user_prefs: UserPreferences) -> float:
+                   user_prefs: UserPreferences,
+                   current_time: float = 0.0,
+                   use_urgency: bool = True) -> float:
     """
-    Labadie desirability ratio:
+    Labadie desirability ratio — CẢI TIẾN với Time-Window Urgency.
+
+    Công thức GỐC (Labadie 2012):
         ratio = (POI.score × interest_weight) / distance(current, POI)
 
-    Higher ratio → more desirable candidate.
-    If distance == 0, return +inf to strongly favour that POI.
+    Công thức CẢI TIẾN (use_urgency=True):
+        travel  = distance(current, POI)
+        arrival = max(current_time + travel, POI.open_time)
+        time_remaining = POI.close_time - arrival
+        urgency_factor = min(1 + α / max(time_remaining, 1.0), CAP)
+        ratio = (POI.score × interest_weight × urgency_factor) / travel
+
+    Ý nghĩa:
+      • POI sắp đóng cửa (time_remaining nhỏ) → urgency_factor cao → ưu tiên
+      • POI mở cửa cả ngày (time_remaining lớn) → urgency_factor ≈ 1.0 → bình thường
+      • urgency_factor bị cap ở URGENCY_CAP để tránh POI score thấp nhưng sắp đóng
+        được ưu tiên quá mức so với POI score cao.
+
+    Parameters
+    ----------
+    poi : POI
+        Điểm đang xét.
+    current_location : POI
+        Vị trí hiện tại.
+    user_prefs : UserPreferences
+        Sở thích người dùng.
+    current_time : float
+        Thời điểm hiện tại (phút / Solomon time units).
+    use_urgency : bool
+        True → áp dụng urgency factor (mặc định).
+        False → Labadie ratio gốc (ablation).
     """
     interest_weight = user_prefs.interest_weights.get(poi.category, 0.0)
     numerator = poi.base_score * interest_weight
@@ -40,13 +68,34 @@ def _labadie_ratio(poi: POI, current_location: POI,
     if dist == 0:
         return float('inf')
 
-    return numerator / dist
+    if use_urgency:
+        # Tính thời điểm đến nơi (tính cả thời gian chờ nếu đến sớm)
+        arrival = current_time + dist
+        if arrival < poi.open_time:
+            arrival = poi.open_time
+
+        # Thời gian còn lại trước khi POI đóng cửa
+        time_remaining = poi.close_time - arrival
+
+        if time_remaining <= 0:
+            # Đã quá giờ đóng cửa → ratio = 0 (không khả thi)
+            return 0.0
+
+        # Urgency factor: càng gấp → càng cao, nhưng bị cap
+        urgency_factor = min(1.0 + URGENCY_ALPHA / max(time_remaining, 1.0),
+                             URGENCY_CAP)
+
+        return (numerator * urgency_factor) / dist
+    else:
+        # Labadie ratio gốc (ablation mode)
+        return numerator / dist
 
 
 def _create_heuristic_individual(
     pois: List[POI],
     depot: POI,
     user_prefs: UserPreferences,
+    use_urgency: bool = True,
 ) -> Individual:
     """
     Build ONE individual using the Randomized Insertion Heuristic:
@@ -54,14 +103,24 @@ def _create_heuristic_individual(
       2. Maintain a set of unvisited POIs (all non-depot POIs).
       3. Repeat:
          a. Filter unvisited POIs → keep only those passing `try_add_poi`.
-         b. Compute Labadie ratio for each valid candidate.
+         b. Compute Labadie ratio (with urgency) for each valid candidate.
          c. Sort descending → build RCL from Top-k.
          d. Pick one random POI from the RCL → append to route.
+         e. Update current_time (travel + wait + service).
       4. When no more valid POIs can be added, append Depot and return.
+
+    Parameters
+    ----------
+    use_urgency : bool
+        True  → dùng Improved Labadie ratio với urgency factor (mặc định).
+        False → dùng Labadie ratio gốc (ablation mode).
     """
     route: List[POI] = [depot]
     unvisited = {p.id for p in pois if p.id != depot.id}
     poi_map = {p.id: p for p in pois}
+
+    # Track thời gian hiện tại để tính urgency chính xác
+    current_time = user_prefs.start_time_minutes
 
     while unvisited:
         current = route[-1]
@@ -71,7 +130,8 @@ def _create_heuristic_individual(
         for pid in list(unvisited):
             poi = poi_map[pid]
             if try_add_poi(route, poi, user_prefs):
-                ratio = _labadie_ratio(poi, current, user_prefs)
+                ratio = _labadie_ratio(poi, current, user_prefs,
+                                       current_time, use_urgency)
                 candidates.append((poi, ratio))
 
         if not candidates:
@@ -88,6 +148,14 @@ def _create_heuristic_individual(
 
         route.append(chosen_poi)
         unvisited.discard(chosen_poi.id)
+
+        # --- Cập nhật current_time sau khi thêm POI ---
+        travel = get_travel_time(current, chosen_poi)
+        arrival = current_time + travel
+        if arrival < chosen_poi.open_time:
+            arrival = chosen_poi.open_time  # Chờ đến giờ mở
+        departure = arrival + chosen_poi.duration
+        current_time = departure
 
     # Close route at Depot
     route.append(depot)
@@ -131,6 +199,7 @@ def initialize_population(
     pois: List[POI],
     user_prefs: UserPreferences,
     use_heuristic_init: bool = True,
+    use_urgency: bool = True,
 ) -> List[Individual]:
     """
     Generate the initial population of 100 individuals.
@@ -155,6 +224,9 @@ def initialize_population(
     use_heuristic_init : bool
         True → 80% Heuristic + 20% Random (mặc định).
         False → 100% Random (ablation study).
+    use_urgency : bool
+        True → Improved Labadie ratio với time-window urgency (mặc định).
+        False → Labadie ratio gốc (ablation study).
 
     Returns
     -------
@@ -176,7 +248,7 @@ def initialize_population(
 
     # --- Strategy 1: Heuristic individuals ---
     for i in range(heuristic_count):
-        ind = _create_heuristic_individual(pois, depot, user_prefs)
+        ind = _create_heuristic_individual(pois, depot, user_prefs, use_urgency)
         population.append(ind)
 
     # --- Strategy 2: Random individuals ---

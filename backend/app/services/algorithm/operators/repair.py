@@ -10,6 +10,9 @@ Greedy Refill:
   POI chưa ghé theo thứ tự score × interest_weight cao nhất,
   tại vị trí tốn ít thời gian nhất, miễn là vẫn thỏa constraints.
 
+  ★ CẢI TIẾN: Khi use_urgency=True, thứ tự ưu tiên POI có tính đến
+    thời gian còn lại trước khi đóng cửa (urgency factor).
+
 Cả hai hàm hỗ trợ ablation flag để bật/tắt riêng từng cơ chế.
 """
 
@@ -18,6 +21,7 @@ from typing import List
 from app.models.domain import POI, Individual
 from app.models.requests import UserPreferences
 from app.services.algorithm.fitness import get_travel_time, check_constraints
+from app.core.config import URGENCY_ALPHA, URGENCY_CAP
 
 
 def repair(
@@ -94,6 +98,7 @@ def greedy_refill(
     individual: Individual,
     pois: List[POI],
     user_prefs: UserPreferences,
+    use_urgency: bool = True,
 ) -> Individual:
     """
     ★ GREEDY REFILL — Chèn thêm POI vào route sau khi Repair xóa bớt ★
@@ -102,8 +107,11 @@ def greedy_refill(
     Bước này tìm POI chưa ghé, thử chèn vào vị trí tốt nhất (tốn ít
     thời gian nhất), miễn là vẫn thỏa constraints.
 
-    Ưu tiên POI theo: score × interest_weight (cao → thêm trước).
-    Duyệt TOÀN BỘ POI chưa thăm (100 POI ~ O(1ms)).
+    ★ CẢI TIẾN (use_urgency=True):
+      Thay vì sort chỉ theo score × weight, hàm tính urgency_score
+      dựa trên thời gian còn lại trước khi đóng cửa (close_time).
+      POI sắp đóng cửa sớm → urgency_score cao hơn → được chèn trước.
+      Điều này tránh mất POI có time window hẹp.
 
     Parameters
     ----------
@@ -113,6 +121,9 @@ def greedy_refill(
         Toàn bộ danh sách POI có thể thêm vào.
     user_prefs : UserPreferences
         Ràng buộc người dùng để kiểm tra tính khả thi.
+    use_urgency : bool
+        True → urgency-aware sorting (mặc định).
+        False → chỉ sort theo score × weight (ablation).
 
     Returns
     -------
@@ -127,12 +138,37 @@ def greedy_refill(
         individual.route = route
         return individual
 
-    # Sắp xếp theo score cá nhân hóa (descending)
+    # Sắp xếp theo score cá nhân hóa (có hoặc không có urgency)
     weights = user_prefs.interest_weights
-    unvisited.sort(
-        key=lambda p: p.base_score * weights.get(p.category, 0.0),
-        reverse=True,
-    )
+
+    if use_urgency:
+        # ── Urgency-aware sorting ────────────────────────────────────────
+        # Ước lượng current_time bằng cách simulate route hiện tại
+        current_time = user_prefs.start_time_minutes
+        for i in range(len(route) - 1):
+            travel = get_travel_time(route[i], route[i + 1])
+            arrival = current_time + travel
+            if arrival < route[i + 1].open_time:
+                arrival = route[i + 1].open_time
+            current_time = arrival + route[i + 1].duration
+
+        # Tính urgency_score cho mỗi POI chưa ghé
+        def urgency_score(p: POI) -> float:
+            base = p.base_score * weights.get(p.category, 0.0)
+            time_remaining = p.close_time - user_prefs.start_time_minutes
+            if time_remaining <= 0:
+                return 0.0
+            urgency_factor = min(1.0 + URGENCY_ALPHA / max(time_remaining, 1.0),
+                                 URGENCY_CAP)
+            return base * urgency_factor
+
+        unvisited.sort(key=urgency_score, reverse=True)
+    else:
+        # ── Sorting gốc (ablation) ──────────────────────────────────────
+        unvisited.sort(
+            key=lambda p: p.base_score * weights.get(p.category, 0.0),
+            reverse=True,
+        )
 
     for candidate in unvisited:
         best_pos = -1
