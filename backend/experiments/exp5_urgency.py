@@ -28,12 +28,13 @@ Usage:
 import os
 import sys
 import json
+import argparse
 import pandas as pd
 import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from experiments.benchmark_runner import run_batch, create_fixed_prefs
+from experiments.benchmark_runner import run_batch, create_fixed_prefs, parse_instances_arg
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Cấu hình
@@ -41,6 +42,7 @@ from experiments.benchmark_runner import run_batch, create_fixed_prefs
 INSTANCES = ["C101", "C201", "R101", "R201", "RC101", "RC201"]
 NUM_RUNS = 10    # 10 runs × 6 instances × 2 variants = 120 runs tổng
 OUTPUT_DIR = "experiments/results/exp5_urgency"
+FAIR_BENCHMARK_FLAGS = {"use_wait_penalty": False}
 
 # BKS để chuẩn hóa score (từ Labadie 2012)
 BKS = {
@@ -79,13 +81,57 @@ def _extract_convergence_speed(df: pd.DataFrame) -> float:
     return np.mean(speeds) if speeds else float('nan')
 
 
+def _safe_wilcoxon_greater(x: np.ndarray, y: np.ndarray, wilcoxon_fn) -> tuple[float, float]:
+    """
+    Chạy Wilcoxon one-sided (x > y) an toàn cho cả runtime và type checker.
+    Trả về (w_stat, p_value). Nếu không test được thì fallback (0.0, 1.0).
+    """
+    if x.shape != y.shape or x.size == 0:
+        return 0.0, 1.0
+
+    diff = x - y
+    if np.all(diff == 0):
+        return 0.0, 1.0
+
+    try:
+        result = wilcoxon_fn(x, y, alternative='greater')
+        # scipy có thể trả object (có .statistic/.pvalue) hoặc tuple-like tùy version.
+        if hasattr(result, "statistic") and hasattr(result, "pvalue"):
+            return float(result.statistic), float(result.pvalue)
+        if isinstance(result, tuple) and len(result) >= 2:
+            return float(result[0]), float(result[1])
+        return 0.0, 1.0
+    except Exception:
+        return 0.0, 1.0
+
+
+def _parse_args():
+    parser = argparse.ArgumentParser(
+        description="So sánh urgency heuristic với baseline no-urgency"
+    )
+    parser.add_argument(
+        "--instances",
+        default=",".join(INSTANCES),
+        help="Danh sách instance, cách nhau bởi dấu phẩy. Ví dụ: C101,R101",
+    )
+    parser.add_argument("--num-runs", type=int, default=NUM_RUNS)
+    parser.add_argument("--output-dir", default=OUTPUT_DIR)
+    return parser.parse_args()
+
+
 def main():
-    total_runs = NUM_RUNS * len(INSTANCES) * len(VARIANTS)
+    args = _parse_args()
+    try:
+        instances = parse_instances_arg(args.instances)
+    except ValueError as e:
+        raise SystemExit(f"\nLỗi tham số --instances: {e}\n")
+
+    total_runs = args.num_runs * len(instances) * len(VARIANTS)
     print("=" * 70)
     print("  THÍ NGHIỆM 5: IMPROVED INSERTION HEURISTIC (URGENCY)")
     print(f"  So sánh: with_urgency vs no_urgency (Labadie gốc)")
-    print(f"  Instances: {INSTANCES}")
-    print(f"  Runs/variant/instance: {NUM_RUNS}")
+    print(f"  Instances: {instances}")
+    print(f"  Runs/variant/instance: {args.num_runs}")
     print(f"  Tổng số runs: {total_runs}")
     print("=" * 70)
 
@@ -100,20 +146,21 @@ def main():
         print(f"  Flags: {flags}")
         print(f"{'#' * 70}")
 
-        for inst in INSTANCES:
+        for inst in instances:
             print(f"\n  --- {variant_name} on {inst} ---")
             prefs = create_fixed_prefs(inst)
 
             df = run_batch(
                 instance_name=inst,
                 user_prefs=prefs,
-                num_runs=NUM_RUNS,
-                output_dir=OUTPUT_DIR,
-                label=f"{variant_name}_{inst}",
+                num_runs=args.num_runs,
+                output_dir=args.output_dir,
+                # run_batch đã prefix instance vào filename, label chỉ cần variant
+                label=variant_name,
                 ablation_flags={
                     **flags,
-                    # Tắt wait penalty để so sánh công bằng với BKS
-                    "use_wait_penalty": False,
+                    # Đồng bộ fairness benchmark với BKS
+                    **FAIR_BENCHMARK_FLAGS,
                 },
             )
             all_results[variant_name][inst] = df
@@ -134,7 +181,7 @@ def main():
 
     detail_rows = []
 
-    for inst in INSTANCES:
+    for inst in instances:
         for variant_name in VARIANTS:
             df = all_results[variant_name][inst]
             bks = BKS[inst]
@@ -235,7 +282,7 @@ def main():
             "Avg_POIs": round(avg_pois, 1),
             "Avg_Time(s)": round(avg_time, 3),
             "Conv_95%_Gen": round(avg_conv, 1),
-            **{f"Norm_{inst}": round(per_inst[inst], 2) for inst in INSTANCES},
+            **{f"Norm_{inst}": round(per_inst[inst], 2) for inst in instances},
         })
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -245,17 +292,22 @@ def main():
     print("  BẢNG 3: KIỂM ĐỊNH THỐNG KÊ — WILCOXON SIGNED-RANK TEST")
     print(f"{'=' * 90}")
 
+    stat_rows = []
+    wilcoxon_fn = None
+
     try:
-        from scipy.stats import wilcoxon
+        from scipy.stats import wilcoxon as wilcoxon_fn
+    except ImportError:
+        wilcoxon_fn = None
+
+    if wilcoxon_fn is not None:
 
         print(f"  {'Instance':<10} │ {'Metric':<15} │ "
               f"{'Urgency Avg':>12} {'No-Urg Avg':>12} │ "
               f"{'W-stat':>8} {'p-value':>10} {'Significant?':>13}")
         print(f"  {'─' * 85}")
 
-        stat_rows = []
-
-        for inst in INSTANCES:
+        for inst in instances:
             df_urg = all_results["with_urgency"][inst]
             df_no  = all_results["no_urgency"][inst]
 
@@ -263,15 +315,7 @@ def main():
             scores_urg = df_urg['total_score'].values
             scores_no  = df_no['total_score'].values
 
-            diff = scores_urg - scores_no
-            if np.all(diff == 0):
-                w_stat, p_val = 0, 1.0
-            else:
-                try:
-                    w_stat, p_val = wilcoxon(scores_urg, scores_no,
-                                             alternative='greater')
-                except ValueError:
-                    w_stat, p_val = 0, 1.0
+            w_stat, p_val = _safe_wilcoxon_greater(scores_urg, scores_no, wilcoxon_fn)
 
             sig = "✅ Yes (p<0.05)" if p_val < 0.05 else "❌ No"
             print(f"  {inst:<10} │ {'Total Score':<15} │ "
@@ -292,15 +336,7 @@ def main():
             pois_urg = df_urg['num_pois'].values
             pois_no  = df_no['num_pois'].values
 
-            diff = pois_urg - pois_no
-            if np.all(diff == 0):
-                w_stat, p_val = 0, 1.0
-            else:
-                try:
-                    w_stat, p_val = wilcoxon(pois_urg, pois_no,
-                                             alternative='greater')
-                except ValueError:
-                    w_stat, p_val = 0, 1.0
+            w_stat, p_val = _safe_wilcoxon_greater(pois_urg, pois_no, wilcoxon_fn)
 
             sig = "✅ Yes (p<0.05)" if p_val < 0.05 else "❌ No"
             print(f"  {'':<10} │ {'Num POIs':<15} │ "
@@ -319,18 +355,10 @@ def main():
 
             print(f"  {'─' * 85}")
 
-        # Tổng hợp (tất cả instances)
-        all_scores_urg = pd.concat(
-            [all_results["with_urgency"][inst]['total_score'] for inst in INSTANCES]
-        ).values
-        all_scores_no = pd.concat(
-            [all_results["no_urgency"][inst]['total_score'] for inst in INSTANCES]
-        ).values
-
-        # Normalize trước khi test (vì scale khác nhau giữa instances)
+        # Normalize trước khi test overall (vì scale khác nhau giữa instances)
         all_norm_urg = []
         all_norm_no = []
-        for inst in INSTANCES:
+        for inst in instances:
             bks = BKS[inst]
             all_norm_urg.extend(
                 (all_results["with_urgency"][inst]['total_score'] / bks * 100).tolist()
@@ -342,15 +370,7 @@ def main():
         all_norm_urg = np.array(all_norm_urg)
         all_norm_no = np.array(all_norm_no)
 
-        diff = all_norm_urg - all_norm_no
-        if np.all(diff == 0):
-            w_stat, p_val = 0, 1.0
-        else:
-            try:
-                w_stat, p_val = wilcoxon(all_norm_urg, all_norm_no,
-                                         alternative='greater')
-            except ValueError:
-                w_stat, p_val = 0, 1.0
+        w_stat, p_val = _safe_wilcoxon_greater(all_norm_urg, all_norm_no, wilcoxon_fn)
 
         sig = "✅ Yes (p<0.05)" if p_val < 0.05 else "❌ No"
         print(f"  {'OVERALL':<10} │ {'Norm Score%':<15} │ "
@@ -369,11 +389,11 @@ def main():
 
         # Lưu statistical test results
         stat_df = pd.DataFrame(stat_rows)
-        stat_path = os.path.join(OUTPUT_DIR, "wilcoxon_test_results.csv")
+        stat_path = os.path.join(args.output_dir, "wilcoxon_test_results.csv")
         stat_df.to_csv(stat_path, index=False)
         print(f"\n  📄 Wilcoxon results saved to: {stat_path}")
 
-    except ImportError:
+    else:
         print("  ⚠ scipy chưa cài đặt → bỏ qua kiểm định Wilcoxon.")
         print("    Cài: pip install scipy")
 
@@ -385,7 +405,7 @@ def main():
     print(f"{'=' * 70}")
 
     wins, ties, losses = 0, 0, 0
-    for inst in INSTANCES:
+    for inst in instances:
         urg_avg = all_results["with_urgency"][inst]['total_score'].mean()
         no_avg  = all_results["no_urgency"][inst]['total_score'].mean()
 
@@ -402,22 +422,22 @@ def main():
         print(f"  {inst:<10}: urgency={urg_avg:.1f} vs baseline={no_avg:.1f}  → {result}")
 
     print(f"\n  Kết quả tổng: {wins} Wins, {ties} Ties, {losses} Losses "
-          f"(trên {len(INSTANCES)} instances)")
+          f"(trên {len(instances)} instances)")
 
     # ══════════════════════════════════════════════════════════════════════════
     #  Lưu CSV
     # ══════════════════════════════════════════════════════════════════════════
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    os.makedirs(args.output_dir, exist_ok=True)
 
     # Detail CSV
     detail_df = pd.DataFrame(detail_rows)
-    detail_path = os.path.join(OUTPUT_DIR, "exp5_detail.csv")
+    detail_path = os.path.join(args.output_dir, "exp5_detail.csv")
     detail_df.to_csv(detail_path, index=False)
     print(f"\n  📄 Detail saved to: {detail_path}")
 
     # Summary CSV
     summary_df = pd.DataFrame(summary_rows)
-    summary_path = os.path.join(OUTPUT_DIR, "exp5_summary.csv")
+    summary_path = os.path.join(args.output_dir, "exp5_summary.csv")
     summary_df.to_csv(summary_path, index=False)
     print(f"  📄 Summary saved to: {summary_path}")
 

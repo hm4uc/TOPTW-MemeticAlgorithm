@@ -6,11 +6,11 @@ Hỗ trợ 2 chế độ:
   2. load_solomon_c101()          → Legacy API, tương thích ngược
 """
 
-import os
 import csv
 import copy
 import random
-from typing import Optional, List
+from pathlib import Path
+from typing import List
 from app.models.domain import POI
 
 # --- DANH SÁCH CATEGORY CHUẨN ---
@@ -39,6 +39,12 @@ CATEGORY_PRICE_TIERS: dict[str, list[float]] = {
 #  IN-MEMORY CACHE  (Singleton Pattern — per instance)
 # =============================================================================
 _INSTANCE_CACHE: dict[str, List[POI]] = {}
+AVAILABLE_INSTANCES = ("C101", "C201", "R101", "R201", "RC101", "RC201")
+
+# backend/app/services/data_loader.py -> parents[2] = backend/
+_BACKEND_DIR = Path(__file__).resolve().parents[2]
+_SOLOMON_DIR = _BACKEND_DIR / "data" / "solomon_instances"
+_EXTENDED_DIR = _SOLOMON_DIR / "extended"
 
 
 def _parse_solomon_csv(file_path: str, use_extended: bool = False) -> List[POI]:
@@ -91,7 +97,7 @@ def _parse_solomon_csv(file_path: str, use_extended: bool = False) -> List[POI]:
         print(f"[DataLoader] Error reading file {file_path}: {e}")
         return []
 
-    print(f"[DataLoader] Loaded {len(pois)} POIs from {os.path.basename(file_path)} "
+    print(f"[DataLoader] Loaded {len(pois)} POIs from {Path(file_path).name} "
           f"(Depot id=0 at ({pois[0].x}, {pois[0].y}))")
     return pois
 
@@ -114,22 +120,24 @@ def load_solomon_instance(instance_name: str = "C101") -> List[POI]:
         Deep copy of POI list. POI with id=0 is always the Depot.
     """
     global _INSTANCE_CACHE
+    instance_name = instance_name.strip().upper()
+
+    if instance_name not in AVAILABLE_INSTANCES:
+        raise ValueError(
+            f"instance_name '{instance_name}' không hợp lệ. "
+            f"Các giá trị hợp lệ: {', '.join(AVAILABLE_INSTANCES)}"
+        )
 
     if instance_name not in _INSTANCE_CACHE:
         # Tìm file extended CSV
-        file_path = os.path.join(
-            os.getcwd(), 'data', 'solomon_instances',
-            'extended', f'{instance_name}_extended.csv'
-        )
+        file_path = _EXTENDED_DIR / f'{instance_name}_extended.csv'
 
-        if not os.path.exists(file_path):
+        if not file_path.exists():
             # Fallback: thử từ thư mục gốc (legacy format)
-            file_path = os.path.join(
-                os.getcwd(), 'data', 'solomon_instances', f'{instance_name}.csv'
-            )
-            _INSTANCE_CACHE[instance_name] = _parse_solomon_csv(file_path, use_extended=False)
+            file_path = _SOLOMON_DIR / f'{instance_name}.csv'
+            _INSTANCE_CACHE[instance_name] = _parse_solomon_csv(str(file_path), use_extended=False)
         else:
-            _INSTANCE_CACHE[instance_name] = _parse_solomon_csv(file_path, use_extended=True)
+            _INSTANCE_CACHE[instance_name] = _parse_solomon_csv(str(file_path), use_extended=True)
 
         print(f"[DataLoader] Cache initialized for {instance_name}: "
               f"{len(_INSTANCE_CACHE[instance_name])} POIs")

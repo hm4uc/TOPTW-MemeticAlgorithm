@@ -1,10 +1,9 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import ValidationError
 import logging
 from app.models.requests import UserPreferences
 from app.models.responses import OptimizationResponse
 from app.services.algorithm.hga_engine import HybridGeneticAlgorithm
-from app.services.data_loader import load_solomon_c101
+from app.services.data_loader import load_solomon_instance
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -18,8 +17,8 @@ logger = logging.getLogger(__name__)
         "Nhận sở thích người dùng (ngân sách, khung giờ, mức quan tâm 5 loại hình) "
         "và trả về lộ trình tối ưu sử dụng thuật toán Di truyền Lai (HGA).\n\n"
         "**Quy trình xử lý:**\n"
-        "1. Pydantic validation: kiểm tra budget, khung thời gian, interests → 422 nếu sai định dạng.\n"
-        "2. Business validation: kiểm tra start_node_id có tồn tại trong dataset → 400 nếu không hợp lệ.\n"
+        "1. Pydantic validation: kiểm tra instance_name, budget, khung thời gian, interests → 422 nếu sai định dạng.\n"
+        "2. Business validation: kiểm tra start_node_id có tồn tại trong instance đã chọn → 400 nếu không hợp lệ.\n"
         "3. Chạy HGA tối ưu lộ trình → 500 nếu lỗi hệ thống.\n"
         "4. Kiểm tra kết quả: route rỗng hoặc chỉ có Depot → 404.\n\n"
         "**Loại hình điểm tham quan (interests):**\n"
@@ -78,21 +77,34 @@ async def optimize_itinerary(request: UserPreferences):
     try:
         logger.info("Received optimization request with preferences: %s", request)
 
-        # ── Edge Case 6: Validate start_node_id exists in dataset ─────────
-        pois = load_solomon_c101()
+        # ── Load đúng instance theo request + validate start_node_id ──────
+        pois = load_solomon_instance(request.instance_name)
+        if not pois:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Không tải được dữ liệu cho instance '{request.instance_name}'. "
+                    "Hãy kiểm tra dữ liệu benchmark trong backend/data/solomon_instances."
+                ),
+            )
+
         valid_ids = {p.id for p in pois}
         if request.start_node_id not in valid_ids:
             raise HTTPException(
                 status_code=400,
                 detail=(
                     f"Điểm xuất phát (start_node_id={request.start_node_id}) "
-                    f"không tồn tại trong dataset. "
+                    f"không tồn tại trong instance {request.instance_name}. "
                     f"ID hợp lệ: 0 đến {max(valid_ids)}."
                 ),
             )
 
         # ── Run HGA ───────────────────────────────────────────────────────
-        hga_solver = HybridGeneticAlgorithm(request)
+        hga_solver = HybridGeneticAlgorithm(
+            request,
+            pois=pois,
+            instance_name=request.instance_name,
+        )
         result = hga_solver.run()
 
         # ── Edge Case 7: GA trả về route rỗng [Depot, Depot] ─────────────

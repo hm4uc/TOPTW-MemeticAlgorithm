@@ -11,10 +11,11 @@ Usage:
 
 import os
 import sys
+import argparse
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from experiments.benchmark_runner import run_batch, create_fixed_prefs
+from experiments.benchmark_runner import run_batch, create_fixed_prefs, parse_instances_arg
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Cấu hình
@@ -22,6 +23,7 @@ from experiments.benchmark_runner import run_batch, create_fixed_prefs
 INSTANCES = ["C101", "C201", "R101", "R201", "RC101", "RC201"]
 NUM_RUNS = 30
 OUTPUT_DIR = "experiments/results/exp1_benchmark"
+FAIR_BENCHMARK_FLAGS = {"use_wait_penalty": False}
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Best-Known Solutions từ Labadie (2012)
@@ -48,16 +50,37 @@ LABADIE_GVNS = {
 }
 
 
+def _parse_args():
+    parser = argparse.ArgumentParser(
+        description="Benchmark HGA vs Labadie (2012) trên các Solomon instances"
+    )
+    parser.add_argument(
+        "--instances",
+        default=",".join(INSTANCES),
+        help="Danh sách instance, cách nhau bởi dấu phẩy. Ví dụ: C101,R101",
+    )
+    parser.add_argument("--num-runs", type=int, default=NUM_RUNS)
+    parser.add_argument("--output-dir", default=OUTPUT_DIR)
+    return parser.parse_args()
+
+
 def main():
+    args = _parse_args()
+    try:
+        instances = parse_instances_arg(args.instances)
+    except ValueError as e:
+        raise SystemExit(f"\nLỗi tham số --instances: {e}\n")
+
     print("=" * 70)
     print("  THÍ NGHIỆM 1: SO SÁNH HGA vs LABADIE (2012)")
-    print("  Chế độ: Fixed Scores | Budget = ∞ | 6 Instances")
-    print(f"  Số lần chạy mỗi instance: {NUM_RUNS}")
+    print("  Chế độ: Fixed Scores | Budget = ∞")
+    print(f"  Instances: {instances}")
+    print(f"  Số lần chạy mỗi instance: {args.num_runs}")
     print("=" * 70)
 
     all_results = {}
 
-    for inst in INSTANCES:
+    for inst in instances:
         print(f"\n{'#' * 70}")
         print(f"  INSTANCE: {inst}")
         print(f"{'#' * 70}")
@@ -66,11 +89,11 @@ def main():
         df = run_batch(
             instance_name=inst,
             user_prefs=prefs,
-            num_runs=NUM_RUNS,
-            output_dir=OUTPUT_DIR,
+            num_runs=args.num_runs,
+            output_dir=args.output_dir,
             label="fixed",
-            # ★ Labadie GVNS KHÔNG phạt thời gian chờ → tắt penalty để so sánh công bằng
-            ablation_flags={"use_wait_penalty": False},
+            # Đồng bộ fairness benchmark với Labadie GVNS
+            ablation_flags=FAIR_BENCHMARK_FLAGS,
         )
         all_results[inst] = df
 
@@ -82,7 +105,7 @@ def main():
           f"{'HGA Best':>9} {'HGA Avg':>9} {'HGA Std':>8} {'HGA Gap%':>9} {'HGA T(s)':>9}")
     print("-" * 110)
 
-    for inst in INSTANCES:
+    for inst in instances:
         df = all_results[inst]
         bks = LABADIE_BKS[inst]
         gvns = LABADIE_GVNS[inst]

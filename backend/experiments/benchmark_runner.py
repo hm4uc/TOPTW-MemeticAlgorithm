@@ -14,7 +14,7 @@ Usage:
 import os
 import sys
 import json
-import time
+import argparse
 import pandas as pd
 
 # ── Thêm backend vào path ────────────────────────────────────────────────────
@@ -41,6 +41,44 @@ INSTANCE_CONFIGS = {
 ALL_CATEGORIES = [
     "history_culture", "nature_parks", "food_drink", "shopping", "entertainment"
 ]
+
+
+def parse_instances_arg(instances_arg: str) -> list[str]:
+    """
+    Parse và validate chuỗi --instances (vd: "C101,R101").
+
+    Raises
+    ------
+    ValueError
+        Nếu rỗng hoặc chứa mã instance không hợp lệ.
+    """
+    valid_instances = list(INSTANCE_CONFIGS.keys())
+
+    raw_items = [s.strip().upper() for s in instances_arg.split(",")]
+    instances = [s for s in raw_items if s]
+
+    if not instances:
+        raise ValueError(
+            "--instances đang rỗng. Ví dụ hợp lệ: --instances C101,R101"
+        )
+
+    invalid = [s for s in instances if s not in INSTANCE_CONFIGS]
+    if invalid:
+        raise ValueError(
+            "Mã instance không hợp lệ: "
+            f"{', '.join(invalid)}. "
+            f"Các mã hợp lệ: {', '.join(valid_instances)}"
+        )
+
+    # Giữ thứ tự người dùng nhập, loại trùng để tránh chạy lặp không cần thiết.
+    deduped: list[str] = []
+    seen = set()
+    for inst in instances:
+        if inst not in seen:
+            deduped.append(inst)
+            seen.add(inst)
+
+    return deduped
 
 
 def create_fixed_prefs(instance_name: str) -> UserPreferences:
@@ -199,10 +237,26 @@ def run_batch(
 
 
 if __name__ == "__main__":
-    # Quick test: 1 run trên C101 với fixed scores
-    print("=== QUICK TEST: 1 run on C101 (fixed scores) ===")
-    prefs = create_fixed_prefs("C101")
-    result = run_single("C101", prefs)
-    print(f"\nResult: score={result['total_score']:.2f}, "
-          f"pois={result['num_pois']}, "
-          f"time={result['execution_time']:.3f}s")
+    parser = argparse.ArgumentParser(description="Benchmark runner cho HGA-TOPTW")
+    parser.add_argument("--instance", default="C101", choices=list(INSTANCE_CONFIGS.keys()))
+    parser.add_argument("--num-runs", type=int, default=1)
+    parser.add_argument("--label", default="cli")
+    parser.add_argument("--output-dir", default="experiments/results")
+    args = parser.parse_args()
+
+    print(f"=== QUICK TEST: {args.num_runs} run(s) on {args.instance} (fixed scores) ===")
+    prefs = create_fixed_prefs(args.instance)
+
+    if args.num_runs == 1:
+        result = run_single(args.instance, prefs)
+        print(f"\nResult: score={result['total_score']:.2f}, "
+              f"pois={result['num_pois']}, "
+              f"time={result['execution_time']:.3f}s")
+    else:
+        run_batch(
+            instance_name=args.instance,
+            user_prefs=prefs,
+            num_runs=args.num_runs,
+            output_dir=args.output_dir,
+            label=args.label,
+        )

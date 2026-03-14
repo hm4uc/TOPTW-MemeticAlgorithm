@@ -1,0 +1,4 @@
+Instance,Metric,Urgency_Avg,No_Urgency_Avg,W_stat,p_value,Significant
+C101,Total_Score,310.0,320.0,0.0,1.0,False
+C101,Num_POIs,10.0,10.0,0.0,1.0,False
+OVERALL,Norm_Score%,96.88,100.0,0.0,1.0,False

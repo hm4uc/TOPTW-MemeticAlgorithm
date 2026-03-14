@@ -152,10 +152,22 @@ def greedy_refill(
                 arrival = route[i + 1].open_time
             current_time = arrival + route[i + 1].duration
 
+        # Ước lượng thời điểm có thể bắt đầu chèn POI mới dựa trên trạng thái route hiện tại.
+        # Dùng mốc này sẽ sát thực tế hơn so với luôn dùng start_time_minutes.
+        insertion_anchor_time = current_time
+
         # Tính urgency_score cho mỗi POI chưa ghé
         def urgency_score(p: POI) -> float:
             base = p.base_score * weights.get(p.category, 0.0)
-            time_remaining = p.close_time - user_prefs.start_time_minutes
+            # Ước lượng thời gian đến POI từ điểm cuối interior hiện tại.
+            # Route luôn có dạng [Depot, ..., Depot], nên điểm trước depot cuối là route[-2].
+            anchor_poi = route[-2] if len(route) >= 2 else route[0]
+            est_arrival = insertion_anchor_time + get_travel_time(anchor_poi, p)
+
+            if est_arrival < p.open_time:
+                est_arrival = p.open_time
+
+            time_remaining = p.close_time - est_arrival
             if time_remaining <= 0:
                 return 0.0
             urgency_factor = min(1.0 + URGENCY_ALPHA / max(time_remaining, 1.0),

@@ -13,11 +13,12 @@ Usage:
 
 import os
 import sys
+import argparse
 import pandas as pd
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from experiments.benchmark_runner import run_batch, create_fixed_prefs, INSTANCE_CONFIGS
+from experiments.benchmark_runner import run_batch, create_fixed_prefs, parse_instances_arg
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Cấu hình
@@ -25,6 +26,7 @@ from experiments.benchmark_runner import run_batch, create_fixed_prefs, INSTANCE
 INSTANCES = ["C101", "C201", "R101", "R201", "RC101", "RC201"]
 NUM_RUNS = 5   # 5 runs × 6 instances × 16 configs = 480 runs tổng
 OUTPUT_DIR = "experiments/results/exp4_sensitivity"
+FAIR_BENCHMARK_FLAGS = {"use_wait_penalty": False}
 
 # BKS để chuẩn hóa score (từ Labadie 2012)
 BKS = {
@@ -51,12 +53,32 @@ DEFAULTS = {
 }
 
 
+def _parse_args():
+    parser = argparse.ArgumentParser(
+        description="Sensitivity analysis HGA trên nhiều Solomon instances"
+    )
+    parser.add_argument(
+        "--instances",
+        default=",".join(INSTANCES),
+        help="Danh sách instance, cách nhau bởi dấu phẩy. Ví dụ: C101,R101",
+    )
+    parser.add_argument("--num-runs", type=int, default=NUM_RUNS)
+    parser.add_argument("--output-dir", default=OUTPUT_DIR)
+    return parser.parse_args()
+
+
 def main():
+    args = _parse_args()
+    try:
+        instances = parse_instances_arg(args.instances)
+    except ValueError as e:
+        raise SystemExit(f"\nLỗi tham số --instances: {e}\n")
+
     print("=" * 70)
-    print("  THÍ NGHIỆM 4: SENSITIVITY ANALYSIS (6 Instances, Normalized)")
-    print(f"  Instances: {INSTANCES}")
-    print(f"  Runs/config/instance: {NUM_RUNS}")
-    total_runs = NUM_RUNS * len(INSTANCES) * sum(len(v) for v in PARAM_GRID.values())
+    print("  THÍ NGHIỆM 4: SENSITIVITY ANALYSIS (Normalized)")
+    print(f"  Instances: {instances}")
+    print(f"  Runs/config/instance: {args.num_runs}")
+    total_runs = args.num_runs * len(instances) * sum(len(v) for v in PARAM_GRID.values())
     print(f"  Tổng số runs: {total_runs}")
     print("=" * 70)
 
@@ -74,19 +96,19 @@ def main():
             label = f"{param_name}_{val}"
             all_results[label] = {"param": param_name, "value": val, "dfs": {}}
 
-            for inst in INSTANCES:
+            for inst in instances:
                 print(f"\n  --- {param_name}={val} on {inst} ---")
                 prefs = create_fixed_prefs(inst)
 
                 df = run_batch(
                     instance_name=inst,
                     user_prefs=prefs,
-                    num_runs=NUM_RUNS,
-                    output_dir=OUTPUT_DIR,
+                    num_runs=args.num_runs,
+                    output_dir=args.output_dir,
                     label=label,
                     ga_params=ga_params,
-                    # Tắt wait penalty để so sánh công bằng với BKS
-                    ablation_flags={"use_wait_penalty": False},
+                    # Đồng bộ fairness benchmark với BKS
+                    ablation_flags=FAIR_BENCHMARK_FLAGS,
                 )
                 all_results[label]["dfs"][inst] = df
 
@@ -126,7 +148,7 @@ def main():
             avg_gens = sum(df['generations_run'].mean() for df in dfs.values()) / len(dfs)
 
             marker = " ◄" if val == DEFAULTS[param_name] else ""
-            per_str = " | ".join(f"{inst[:4]}={per_inst[inst]:.1f}" for inst in INSTANCES)
+            per_str = " | ".join(f"{inst[:4]}={per_inst[inst]:.1f}" for inst in instances)
 
             print(f"  {val:>10} {avg_norm:12.2f}% {std_norm:8.2f} "
                   f"{avg_time:10.3f} {avg_gens:8.1f}{marker}  [{per_str}]")
@@ -138,7 +160,7 @@ def main():
                 "Norm_Std": round(std_norm, 2),
                 "Time(s)": round(avg_time, 3),
                 "Gens": round(avg_gens, 1),
-                **{f"Norm_{inst}": round(per_inst[inst], 2) for inst in INSTANCES},
+                **{f"Norm_{inst}": round(per_inst[inst], 2) for inst in instances},
             })
 
     # Lưu CSV summary

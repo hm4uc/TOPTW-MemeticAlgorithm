@@ -29,6 +29,9 @@ VALID_CATEGORIES = {
     'history_culture', 'nature_parks', 'food_drink', 'shopping', 'entertainment'
 }
 
+# Danh sách Solomon instances hỗ trợ trong API/pipeline
+VALID_INSTANCES = {"C101", "C201", "R101", "R201", "RC101", "RC201"}
+
 
 # =============================================================================
 #  Request Model
@@ -41,6 +44,7 @@ class UserPreferences(BaseModel):
         "json_schema_extra": {
             "examples": [
                 {
+                    "instance_name": "C101",
                     "budget": 500000,
                     "start_time": 8.0,
                     "end_time": 17.0,
@@ -57,6 +61,10 @@ class UserPreferences(BaseModel):
         }
     }
 
+    instance_name: str = Field(
+        "C101",
+        description="Tên Solomon instance (C101, C201, R101, R201, RC101, RC201)",
+    )
     budget: float = Field(..., description="Ngân sách tối đa cho chuyến đi (VND)")
     start_time: float = Field(8.0, description="Thời gian bắt đầu chuyến đi (giờ, VD: 8.0 = 8:00)")
     end_time: float = Field(17.0, description="Thời gian kết thúc chuyến đi (giờ, VD: 17.0 = 17:00)")
@@ -76,6 +84,18 @@ class UserPreferences(BaseModel):
     # ─────────────────────────────────────────────────────────────────────────
     #  Field Validators
     # ─────────────────────────────────────────────────────────────────────────
+
+    @field_validator('instance_name')
+    @classmethod
+    def validate_instance_name(cls, v: str) -> str:
+        """Chuẩn hóa instance_name về uppercase và kiểm tra hợp lệ."""
+        normalized = v.strip().upper()
+        if normalized not in VALID_INSTANCES:
+            raise ValueError(
+                f"instance_name '{v}' không hợp lệ. "
+                f"Các giá trị hợp lệ: {sorted(VALID_INSTANCES)}"
+            )
+        return normalized
 
     @field_validator('budget')
     @classmethod

@@ -3,7 +3,7 @@ Thí nghiệm 3: Ablation Study — Đánh giá đóng góp từng thành phần
 
 ★ CHIẾN LƯỢC ★
   • Chạy trên TOÀN BỘ 6 instances (như exp1 và exp4)
-  • Mỗi instance chạy 5 runs × 6 variants = 30 runs/instance
+  • Mỗi instance chạy 5 runs × 5 variants = 25 runs/instance
   • Chuẩn hóa score qua BKS → robust, không thiên lệch
 
 Usage:
@@ -13,18 +13,20 @@ Usage:
 
 import os
 import sys
+import argparse
 import pandas as pd
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from experiments.benchmark_runner import run_batch, create_fixed_prefs
+from experiments.benchmark_runner import run_batch, create_fixed_prefs, parse_instances_arg
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Cấu hình
 # ══════════════════════════════════════════════════════════════════════════════
 INSTANCES = ["C101", "C201", "R101", "R201", "RC101", "RC201"]
-NUM_RUNS = 5    # 5 runs × 6 instances × 6 variants = 180 runs tổng
+NUM_RUNS = 5    # 5 runs × 6 instances × 5 variants = 150 runs tổng
 OUTPUT_DIR = "experiments/results/exp3_ablation"
+FAIR_BENCHMARK_FLAGS = {"use_wait_penalty": False}
 
 # BKS để chuẩn hóa score
 BKS = {
@@ -39,18 +41,37 @@ ABLATION_VARIANTS = {
     "full_hga":           {},                                    # Đầy đủ (baseline)
     "no_smart_repair":    {"use_smart_repair": False},           # Simple Repair
     "no_insertion_mut":   {"use_insertion_mutation": False},      # Chỉ 2-opt + Swap
-    "no_wait_penalty":    {"use_wait_penalty": False},           # Bỏ phạt chờ
     "no_heuristic_init":  {"use_heuristic_init": False},         # 100% Random Init
     "no_diversity_check": {"use_diversity_check": False},        # Bỏ check duplicate
 }
 
 
+def _parse_args():
+    parser = argparse.ArgumentParser(
+        description="Ablation study HGA trên nhiều Solomon instances"
+    )
+    parser.add_argument(
+        "--instances",
+        default=",".join(INSTANCES),
+        help="Danh sách instance, cách nhau bởi dấu phẩy. Ví dụ: C101,R101",
+    )
+    parser.add_argument("--num-runs", type=int, default=NUM_RUNS)
+    parser.add_argument("--output-dir", default=OUTPUT_DIR)
+    return parser.parse_args()
+
+
 def main():
-    total_runs = NUM_RUNS * len(INSTANCES) * len(ABLATION_VARIANTS)
+    args = _parse_args()
+    try:
+        instances = parse_instances_arg(args.instances)
+    except ValueError as e:
+        raise SystemExit(f"\nLỗi tham số --instances: {e}\n")
+
+    total_runs = args.num_runs * len(instances) * len(ABLATION_VARIANTS)
     print("=" * 70)
-    print("  THÍ NGHIỆM 3: ABLATION STUDY (6 Instances, Normalized)")
-    print(f"  Instances: {INSTANCES}")
-    print(f"  Variants: {len(ABLATION_VARIANTS)} | Runs/variant/instance: {NUM_RUNS}")
+    print("  THÍ NGHIỆM 3: ABLATION STUDY (Normalized)")
+    print(f"  Instances: {instances}")
+    print(f"  Variants: {len(ABLATION_VARIANTS)} | Runs/variant/instance: {args.num_runs}")
     print(f"  Tổng số runs: {total_runs}")
     print("=" * 70)
 
@@ -65,19 +86,19 @@ def main():
         print(f"  Flags: {flags if flags else 'FULL (no changes)'}")
         print(f"{'#' * 70}")
 
-        for inst in INSTANCES:
+        for inst in instances:
             print(f"\n  --- {variant_name} on {inst} ---")
             prefs = create_fixed_prefs(inst)
 
             df = run_batch(
                 instance_name=inst,
                 user_prefs=prefs,
-                num_runs=NUM_RUNS,
-                output_dir=OUTPUT_DIR,
-                label=f"{variant_name}_{inst}",
-                ablation_flags=flags,
-                # Tắt wait penalty để so sánh công bằng với BKS
-                # (override nếu variant KHÔNG phải no_wait_penalty)
+                num_runs=args.num_runs,
+                output_dir=args.output_dir,
+                # run_batch đã prefix instance vào filename, label chỉ cần tên variant
+                label=variant_name,
+                # Đồng bộ fairness benchmark với BKS trong toàn bộ exp3
+                ablation_flags={**flags, **FAIR_BENCHMARK_FLAGS},
             )
             all_results[variant_name][inst] = df
 
@@ -118,7 +139,7 @@ def main():
             diff_pct = avg_norm - baseline_norm
             diff_str = f"{diff_pct:+.2f}%"
 
-        per_str = " | ".join(f"{inst[:4]}={per_inst[inst]:.1f}" for inst in INSTANCES)
+        per_str = " | ".join(f"{inst[:4]}={per_inst[inst]:.1f}" for inst in instances)
 
         print(f"  {variant_name:<22} {avg_norm:8.2f}% {std_norm:8.2f} "
               f"{avg_time:10.3f} {avg_gens:8.1f} {diff_str:>8}  [{per_str}]")
@@ -130,7 +151,7 @@ def main():
             "Time(s)": round(avg_time, 3),
             "Gens": round(avg_gens, 1),
             "Diff%": diff_str,
-            **{f"Norm_{inst}": round(per_inst[inst], 2) for inst in INSTANCES},
+            **{f"Norm_{inst}": round(per_inst[inst], 2) for inst in instances},
         })
 
     # Lưu CSV summary
