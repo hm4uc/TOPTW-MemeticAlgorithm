@@ -14,10 +14,12 @@ Usage:
 
 import os
 import sys
+import argparse
+import pandas as pd
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from experiments.benchmark_runner import run_batch, INSTANCE_CONFIGS
+from experiments.benchmark_runner import run_batch, INSTANCE_CONFIGS, parse_instances_arg
 from app.models.requests import UserPreferences
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -55,38 +57,61 @@ USER_PROFILES = {
 BUDGET = 2_000_000
 
 
+def _parse_args():
+    parser = argparse.ArgumentParser(
+        description="Thí nghiệm giá trị cá nhân hóa trên một hoặc nhiều instance"
+    )
+    parser.add_argument(
+        "--instances",
+        default=INSTANCE,
+        help="Danh sách instance, cách nhau bởi dấu phẩy. Ví dụ: C101,R101",
+    )
+    parser.add_argument("--num-runs", type=int, default=NUM_RUNS)
+    parser.add_argument("--output-dir", default=OUTPUT_DIR)
+    return parser.parse_args()
+
+
 def main():
-    cfg = INSTANCE_CONFIGS[INSTANCE]
+    args = _parse_args()
+    try:
+        instances = parse_instances_arg(args.instances)
+    except ValueError as e:
+        raise SystemExit(f"\nLỗi tham số --instances: {e}\n")
 
     print("=" * 70)
     print("  THÍ NGHIỆM 2: ĐÁNH GIÁ GIÁ TRỊ CÁ NHÂN HÓA")
-    print(f"  Instance: {INSTANCE} | Budget: {BUDGET:,}")
-    print(f"  Profiles: {len(USER_PROFILES)} | Runs/profile: {NUM_RUNS}")
+    print(f"  Instances: {instances} | Budget: {BUDGET:,}")
+    print(f"  Profiles: {len(USER_PROFILES)} | Runs/profile/instance: {args.num_runs}")
     print("=" * 70)
 
-    all_results = {}
+    # all_results[profile] = [df_instance_1, df_instance_2, ...]
+    all_results = {k: [] for k in USER_PROFILES}
 
-    for profile_name, interests in USER_PROFILES.items():
-        print(f"\n{'#' * 70}")
-        print(f"  PROFILE: {profile_name}")
-        print(f"  Interests: {interests}")
-        print(f"{'#' * 70}")
+    for inst in instances:
+        cfg = INSTANCE_CONFIGS[inst]
 
-        prefs = UserPreferences(
-            budget=BUDGET,
-            start_time=0.0,
-            end_time=cfg["depot_due"] / 60.0,  # Solomon time → giờ
-            start_node_id=0,
-            interests=interests,
-        )
-        df = run_batch(
-            instance_name=INSTANCE,
-            user_prefs=prefs,
-            num_runs=NUM_RUNS,
-            output_dir=OUTPUT_DIR,
-            label=profile_name,
-        )
-        all_results[profile_name] = df
+        for profile_name, interests in USER_PROFILES.items():
+            print(f"\n{'#' * 70}")
+            print(f"  INSTANCE: {inst} | PROFILE: {profile_name}")
+            print(f"  Interests: {interests}")
+            print(f"{'#' * 70}")
+
+            prefs = UserPreferences(
+                instance_name=inst,
+                budget=BUDGET,
+                start_time=0.0,
+                end_time=cfg["depot_due"] / 60.0,  # Solomon time → giờ
+                start_node_id=0,
+                interests=interests,
+            )
+            df = run_batch(
+                instance_name=inst,
+                user_prefs=prefs,
+                num_runs=args.num_runs,
+                output_dir=args.output_dir,
+                label=profile_name,
+            )
+            all_results[profile_name].append(df)
 
     # ── Bảng tổng hợp ───────────────────────────────────────────────────────
     cat_cols = ["cat_history_culture", "cat_nature_parks", "cat_food_drink",
@@ -107,7 +132,10 @@ def main():
     print("".join(header_parts))
     print("─" * 110)
 
-    for name, df in all_results.items():
+    for name, df_list in all_results.items():
+        if not df_list:
+            continue
+        df = df_list[0] if len(df_list) == 1 else pd.concat(df_list, ignore_index=True)
         score = df['total_score'].mean()
         std = df['total_score'].std()
         pois = df['num_pois'].mean()
@@ -130,7 +158,7 @@ def main():
             row_parts.append(f"{pct:4.0f}%")
         print("".join(row_parts))
 
-    print(f"\n  ★ Instance: {INSTANCE} — Budget: {BUDGET:,}")
+    print(f"\n  ★ Instances: {instances} — Budget: {BUDGET:,}")
     print(f"  ★ Tỷ lệ % = (Số POI danh mục / Tổng POI trong route) × 100")
 
 

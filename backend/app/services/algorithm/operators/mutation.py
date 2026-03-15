@@ -30,7 +30,9 @@ def mutate(
     user_prefs: UserPreferences,
     mutation_rate: float,
     use_insertion_mutation: bool = True,
-) -> Individual:
+    operator_probs: dict[str, float] | None = None,
+    collect_stats: bool = False,
+) -> Individual | tuple[Individual, str, bool]:
     """
     Áp dụng đột biến ngẫu nhiên cho một cá thể (Depot-Safe).
 
@@ -49,6 +51,11 @@ def mutate(
     use_insertion_mutation : bool
         True  → 2-opt(30%) / Swap(30%) / Insertion(40%).
         False → chỉ 2-opt(50%) + Swap(50%)  [ablation mode].
+    operator_probs : dict, optional
+        Xác suất toán tử động, dạng {"2opt": x, "swap": y, "insertion": z}.
+        Nếu None -> dùng tỷ lệ mặc định như cũ.
+    collect_stats : bool
+        True -> trả thêm (op_name, op_success) cho engine theo dõi telemetry.
 
     Returns
     -------
@@ -56,42 +63,61 @@ def mutate(
         Cá thể sau đột biến.
     """
     if random.random() > mutation_rate:
-        return individual
+        return (individual, "skip", False) if collect_stats else individual
 
     interior = list(individual.route[1:-1])
+
+    probs = _resolve_operator_probs(operator_probs, use_insertion_mutation)
 
     # Nếu interior quá ngắn, chỉ thử Insertion nếu được bật
     if len(interior) < 2:
         if use_insertion_mutation:
-            individual = _insertion_mutation(individual, depot, pois, user_prefs)
-        return individual
+            individual, success = _insertion_mutation(individual, depot, pois, user_prefs)
+            return (individual, "insertion", success) if collect_stats else individual
+        return (individual, "skip", False) if collect_stats else individual
 
     roll = random.random()
 
-    if use_insertion_mutation:
-        # ── Chế độ đầy đủ: 2-opt(30%) / Swap(30%) / Insertion(40%) ──
-        if roll < 0.30:
-            i, j = sorted(random.sample(range(len(interior)), 2))
-            interior[i:j + 1] = interior[i:j + 1][::-1]
-            individual.route = [depot] + interior + [depot]
-        elif roll < 0.60:
-            i, j = random.sample(range(len(interior)), 2)
-            interior[i], interior[j] = interior[j], interior[i]
-            individual.route = [depot] + interior + [depot]
-        else:
-            individual = _insertion_mutation(individual, depot, pois, user_prefs)
-    else:
-        # ── Ablation: chỉ 2-opt(50%) + Swap(50%) ────────────────────
-        if roll < 0.50:
-            i, j = sorted(random.sample(range(len(interior)), 2))
-            interior[i:j + 1] = interior[i:j + 1][::-1]
-            individual.route = [depot] + interior + [depot]
-        else:
-            i, j = random.sample(range(len(interior)), 2)
-            interior[i], interior[j] = interior[j], interior[i]
-            individual.route = [depot] + interior + [depot]
+    if roll < probs["2opt"]:
+        i, j = sorted(random.sample(range(len(interior)), 2))
+        interior[i:j + 1] = interior[i:j + 1][::-1]
+        individual.route = [depot] + interior + [depot]
+        return (individual, "2opt", True) if collect_stats else individual
 
-    return individual
+    if roll < probs["2opt"] + probs["swap"]:
+        i, j = random.sample(range(len(interior)), 2)
+        interior[i], interior[j] = interior[j], interior[i]
+        individual.route = [depot] + interior + [depot]
+        return (individual, "swap", True) if collect_stats else individual
+
+    individual, success = _insertion_mutation(individual, depot, pois, user_prefs)
+    return (individual, "insertion", success) if collect_stats else individual
+
+
+def _resolve_operator_probs(
+    operator_probs: dict[str, float] | None,
+    use_insertion_mutation: bool,
+) -> dict[str, float]:
+    """Chuẩn hóa xác suất toán tử để tổng = 1.0."""
+    if not use_insertion_mutation:
+        return {"2opt": 0.5, "swap": 0.5, "insertion": 0.0}
+
+    if operator_probs is None:
+        return {"2opt": 0.3, "swap": 0.3, "insertion": 0.4}
+
+    p2 = max(0.0, float(operator_probs.get("2opt", 0.3)))
+    ps = max(0.0, float(operator_probs.get("swap", 0.3)))
+    pi = max(0.0, float(operator_probs.get("insertion", 0.4)))
+
+    total = p2 + ps + pi
+    if total <= 1e-12:
+        return {"2opt": 0.3, "swap": 0.3, "insertion": 0.4}
+
+    return {
+        "2opt": p2 / total,
+        "swap": ps / total,
+        "insertion": pi / total,
+    }
 
 
 def _insertion_mutation(
@@ -99,7 +125,7 @@ def _insertion_mutation(
     depot: POI,
     pois: List[POI],
     user_prefs: UserPreferences,
-) -> Individual:
+) -> tuple[Individual, bool]:
     """
     ★ INSERTION MUTATION — Toán tử cốt lõi để phá Hội tụ sớm ★
 
@@ -114,7 +140,7 @@ def _insertion_mutation(
     unvisited = [p for p in pois if p.id not in visited_ids and p.id != 0]
 
     if not unvisited:
-        return individual
+        return individual, False
 
     # Sắp xếp theo score cá nhân hóa, xen kẽ random để giữ đa dạng
     weights = user_prefs.interest_weights
@@ -123,6 +149,8 @@ def _insertion_mutation(
         key=lambda p: p.base_score * weights.get(p.category, 0.0),
         reverse=True,
     )
+
+    inserted_any = False
 
     for candidate in unvisited:
         best_pos = -1
@@ -149,6 +177,7 @@ def _insertion_mutation(
             test_route.insert(best_pos, candidate)
             if check_constraints(test_route, user_prefs):
                 route = test_route
+                inserted_any = True
 
     individual.route = route
-    return individual
+    return individual, inserted_any

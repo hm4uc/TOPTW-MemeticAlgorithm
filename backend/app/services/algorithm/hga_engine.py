@@ -50,6 +50,17 @@ from app.core.config import (
     DEFAULT_STAGNATION_LIMIT,
     DEFAULT_TOURNAMENT_K,
     IMPROVEMENT_THRESHOLD,
+    USE_ADAPTIVE_MUTATION_DEFAULT,
+    ADAPTIVE_INSERT_START,
+    ADAPTIVE_INSERT_END,
+    ADAPTIVE_2OPT_START,
+    ADAPTIVE_2OPT_END,
+    ADAPTIVE_STAGNATION_TRIGGER,
+    ADAPTIVE_LOW_DIVERSITY_THRESHOLD,
+    ADAPTIVE_INSERT_FAIL_TRIGGER,
+    ADAPTIVE_INSERT_FAIL_WINDOW,
+    ADAPTIVE_MIN_PROB,
+    ADAPTIVE_MAX_PROB,
 )
 
 
@@ -66,6 +77,7 @@ class HybridGeneticAlgorithm:
         use_heuristic_init: bool = True,       # False → 100% Random Init
         use_diversity_check: bool = True,      # False → không check duplicate
         use_urgency: bool = True,              # False → Labadie ratio gốc (không urgency)
+        use_adaptive_mutation: bool = USE_ADAPTIVE_MUTATION_DEFAULT,
         # ── Tunable Parameters ──────────────────────────────────────
         population_size: int = POPULATION_SIZE,
         mutation_rate: float = DEFAULT_MUTATION_RATE,
@@ -90,6 +102,7 @@ class HybridGeneticAlgorithm:
         self.use_heuristic_init = use_heuristic_init
         self.use_diversity_check = use_diversity_check
         self.use_urgency = use_urgency
+        self.use_adaptive_mutation = use_adaptive_mutation
 
         # ── GA Parameters ────────────────────────────────────────────────────
         self.population_size = population_size
@@ -107,6 +120,126 @@ class HybridGeneticAlgorithm:
         self.convergence_log: list[dict] = []
         self.actual_gens: int = 0
         self.best_individual: Optional[Individual] = None
+        self.insert_fail_history: list[float] = []
+
+    def _count_unique_routes(self, population: list[Individual]) -> int:
+        """Đếm số route unique trong quần thể theo tập POI nội bộ."""
+        return len({frozenset(p.id for p in ind.route[1:-1]) for ind in population})
+
+    def _avg_insert_fail_rate(self) -> float:
+        """Lấy fail-rate trung bình trong cửa sổ gần đây của insertion mutation."""
+        if not self.insert_fail_history:
+            return 0.0
+        return sum(self.insert_fail_history) / len(self.insert_fail_history)
+
+    def _update_insert_fail_rate(self, attempts: int, success: int) -> None:
+        """Cập nhật rolling window insert fail-rate."""
+        if attempts <= 0:
+            return
+        fail_rate = 1.0 - (success / attempts)
+        self.insert_fail_history.append(fail_rate)
+        if len(self.insert_fail_history) > ADAPTIVE_INSERT_FAIL_WINDOW:
+            self.insert_fail_history.pop(0)
+
+    def _append_convergence_log(
+        self,
+        gen: int,
+        all_fitnesses: list[float],
+        unique_routes: int,
+        operator_probs: dict[str, float],
+        avg_insert_fail: float,
+    ) -> None:
+        """Ghi log hội tụ mỗi thế hệ với telemetry mutation."""
+        best_fit = all_fitnesses[0]
+        avg_fit = sum(all_fitnesses) / len(all_fitnesses)
+
+        self.convergence_log.append({
+            "gen": gen,
+            "best_fitness": best_fit,
+            "avg_fitness": avg_fit,
+            "median_fitness": all_fitnesses[len(all_fitnesses) // 2],
+            "worst_fitness": all_fitnesses[-1],
+            "unique_routes": unique_routes,
+            "wait_time": self.population[0].total_wait,
+            "best_score": self.population[0].total_score,
+            "p_2opt": round(operator_probs["2opt"], 4),
+            "p_swap": round(operator_probs["swap"], 4),
+            "p_insert": round(operator_probs["insertion"], 4),
+            "insert_fail_rate": round(avg_insert_fail, 4),
+        })
+
+    def _print_gen_status(
+        self,
+        gen: int,
+        best_fit: float,
+        avg_fit: float,
+        unique_routes: int,
+        operator_probs: dict[str, float],
+        gens_without_improvement: int,
+        duplicates_replaced: int,
+    ) -> None:
+        print(
+            f"[HGA] Gen {gen:>3}/{self.generations} | "
+            f"Best = {best_fit:8.2f} | "
+            f"Avg = {avg_fit:8.2f} | "
+            f"Unique = {unique_routes:>2}/{self.population_size} | "
+            f"Wait = {self.population[0].total_wait:6.1f} | "
+            f"P(2O/S/I) = {operator_probs['2opt']:.2f}/{operator_probs['swap']:.2f}/{operator_probs['insertion']:.2f} | "
+            f"Stag = {gens_without_improvement:>2}/{self.stagnation_limit} | "
+            f"Dup = {duplicates_replaced}"
+        )
+
+    def _build_operator_probs(
+        self,
+        gen: int,
+        gens_without_improvement: int,
+        unique_routes: int,
+        insert_fail_rate: float,
+    ) -> dict[str, float]:
+        """Adaptive-Lite 2 tầng: schedule theo progress + feedback trạng thái quần thể."""
+        if not self.use_adaptive_mutation:
+            if self.use_insertion_mutation:
+                return {"2opt": 0.3, "swap": 0.3, "insertion": 0.4}
+            return {"2opt": 0.5, "swap": 0.5, "insertion": 0.0}
+
+        if not self.use_insertion_mutation:
+            return {"2opt": 0.5, "swap": 0.5, "insertion": 0.0}
+
+        progress = gen / max(self.generations - 1, 1)
+
+        p_insert = ADAPTIVE_INSERT_START + (ADAPTIVE_INSERT_END - ADAPTIVE_INSERT_START) * progress
+        p_2opt = ADAPTIVE_2OPT_START + (ADAPTIVE_2OPT_END - ADAPTIVE_2OPT_START) * progress
+        p_swap = max(0.0, 1.0 - p_insert - p_2opt)
+
+        # Tầng 2 - feedback theo stagnation
+        if gens_without_improvement >= ADAPTIVE_STAGNATION_TRIGGER:
+            p_2opt += 0.10
+            p_swap -= 0.05
+            p_insert -= 0.05
+
+        # Tầng 2 - feedback theo diversity
+        diversity_ratio = unique_routes / max(self.population_size, 1)
+        if diversity_ratio < ADAPTIVE_LOW_DIVERSITY_THRESHOLD:
+            p_swap += 0.10
+            p_2opt -= 0.05
+            p_insert -= 0.05
+
+        # Tầng 2 - feedback theo insert fail-rate gần đây
+        if insert_fail_rate >= ADAPTIVE_INSERT_FAIL_TRIGGER:
+            p_insert -= 0.10
+            p_2opt += 0.10
+
+        # Clamp và normalize
+        p_2opt = min(max(p_2opt, ADAPTIVE_MIN_PROB), ADAPTIVE_MAX_PROB)
+        p_swap = min(max(p_swap, ADAPTIVE_MIN_PROB), ADAPTIVE_MAX_PROB)
+        p_insert = min(max(p_insert, ADAPTIVE_MIN_PROB), ADAPTIVE_MAX_PROB)
+
+        total = p_2opt + p_swap + p_insert
+        return {
+            "2opt": p_2opt / total,
+            "swap": p_swap / total,
+            "insertion": p_insert / total,
+        }
 
     # ══════════════════════════════════════════════════════════════════════════
     #  Step 1: Population Initialization
@@ -202,20 +335,40 @@ class HybridGeneticAlgorithm:
         for gen in range(self.generations):
             actual_gens = gen + 1
             duplicates_replaced = 0
+            unique_routes_before = self._count_unique_routes(self.population)
+            avg_insert_fail = self._avg_insert_fail_rate()
+            operator_probs = self._build_operator_probs(
+                gen,
+                gens_without_improvement,
+                unique_routes_before,
+                avg_insert_fail,
+            )
+            insertion_attempts = 0
+            insertion_success = 0
 
             # ── Tạo con cái ──────────────────────────────────────────────────
             children: list[Individual] = []
             while len(children) < self.population_size:
                 p1, p2 = self._select_parents(self.population)
                 child = crossover_ox1(p1, p2, self.depot)
-                child = mutate(
+                child, op_name, op_success = mutate(
                     child, self.depot, self.pois, self.user_prefs,
                     self.mutation_rate, self.use_insertion_mutation,
+                    operator_probs=operator_probs,
+                    collect_stats=True,
                 )
+
+                if op_name == "insertion":
+                    insertion_attempts += 1
+                    if op_success:
+                        insertion_success += 1
+
                 child = repair(child, self.user_prefs, self.use_smart_repair)
                 child = greedy_refill(child, self.pois, self.user_prefs, self.use_urgency)
                 calculate_fitness(child, self.user_prefs, self.wait_penalty_weight)
                 children.append(child)
+
+            self._update_insert_fail_rate(insertion_attempts, insertion_success)
 
             # ── Merged Replacement — giữ best từ (parents + children) ────────
             merged = list(self.population) + children
@@ -247,35 +400,26 @@ class HybridGeneticAlgorithm:
                 gens_without_improvement += 1
 
             # ── Enhanced Logging ──────────────────────────────────────────────
-            all_fitnesses = sorted(
-                [ind.fitness for ind in self.population], reverse=True
+            all_fitnesses = sorted([ind.fitness for ind in self.population], reverse=True)
+            best_fit = all_fitnesses[0]
+            avg_fit = sum(all_fitnesses) / len(all_fitnesses)
+            unique_routes = self._count_unique_routes(self.population)
+
+            self._append_convergence_log(
+                gen=gen + 1,
+                all_fitnesses=all_fitnesses,
+                unique_routes=unique_routes,
+                operator_probs=operator_probs,
+                avg_insert_fail=avg_insert_fail,
             )
-            best_fit   = all_fitnesses[0]
-            avg_fit    = sum(all_fitnesses) / len(all_fitnesses)
-            unique_routes = len({
-                frozenset(p.id for p in ind.route[1:-1])
-                for ind in self.population
-            })
-
-            self.convergence_log.append({
-                "gen":            gen + 1,
-                "best_fitness":   best_fit,
-                "avg_fitness":    avg_fit,
-                "median_fitness": all_fitnesses[len(all_fitnesses) // 2],
-                "worst_fitness":  all_fitnesses[-1],
-                "unique_routes":  unique_routes,
-                "wait_time":      self.population[0].total_wait,
-                "best_score":     self.population[0].total_score,
-            })
-
-            print(
-                f"[HGA] Gen {gen + 1:>3}/{self.generations} | "
-                f"Best = {best_fit:8.2f} | "
-                f"Avg = {avg_fit:8.2f} | "
-                f"Unique = {unique_routes:>2}/{self.population_size} | "
-                f"Wait = {self.population[0].total_wait:6.1f} | "
-                f"Stag = {gens_without_improvement:>2}/{self.stagnation_limit} | "
-                f"Dup = {duplicates_replaced}"
+            self._print_gen_status(
+                gen=gen + 1,
+                best_fit=best_fit,
+                avg_fit=avg_fit,
+                unique_routes=unique_routes,
+                operator_probs=operator_probs,
+                gens_without_improvement=gens_without_improvement,
+                duplicates_replaced=duplicates_replaced,
             )
 
             # ── Early Stopping Check ──────────────────────────────────────────

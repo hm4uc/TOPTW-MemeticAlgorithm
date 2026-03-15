@@ -114,7 +114,9 @@ Mỗi generation:
 
 Tracking:
 - `convergence_log` lưu best/avg/median/worst/unique routes/wait per generation.
+- Khi bật adaptive mutation, log có thêm `p_2opt`, `p_swap`, `p_insert`, `insert_fail_rate`.
 - `actual_gens`, `best_individual` phục vụ benchmark.
+- `hga_engine.py` đã tách thêm helper nội bộ (unique routes, rolling insert fail-rate, convergence logging, generation status) để giảm độ phức tạp của `run()` và dễ bảo trì.
 
 ### 5.4 Ablation flags (first-class)
 `HybridGeneticAlgorithm.__init__` hỗ trợ:
@@ -124,18 +126,25 @@ Tracking:
 - `use_heuristic_init`
 - `use_diversity_check`
 - `use_urgency`
+- `use_adaptive_mutation`
 
 Đây là điểm mạnh cho nghiên cứu/thực nghiệm vì có thể bật/tắt từng thành phần trong cùng code path.
 
 ## 6) Hệ sinh thái thực nghiệm (`backend/experiments`)
 - `benchmark_runner.py`: hàm nền `run_single`, `run_batch`, tạo fixed prefs, và `parse_instances_arg()` để validate `--instances` dùng chung.
 - `exp1_benchmark.py`: so sánh HGA vs BKS/GVNS (6 instances).
-- `exp2_personalization.py`: đo tác động profile sở thích.
+- `exp2_personalization.py`: đo tác động profile sở thích (đã hỗ trợ `--instances`, `--num-runs`, `--output-dir`).
 - `exp3_ablation.py`: đánh giá đóng góp từng thành phần.
 - `exp4_sensitivity.py`: đo độ nhạy tham số GA.
 - `exp5_urgency.py`: so sánh urgency vs no-urgency + Wilcoxon nếu có scipy.
+- `exp6_adaptive_mutation.py`: so sánh mutation tĩnh vs Adaptive-Lite 2 tầng.
 - `generate_extended_data.py`: tạo bộ extended CSV reproducible.
 - `analyze_results.py`, `plot_charts.py`, `tune_params.py`: tổng hợp, vẽ biểu đồ, tuning.
+  - `plot_charts.py` hiện đã có chart cho exp6:
+    - Boxplot `static_mutation` vs `adaptive_lite_2tier` theo Normalized Score.
+    - Curve `p_insert` / `p_2opt` (và `p_swap`) theo generation từ `convergence_log`.
+  - `plot_ablation_boxplot` đã đồng bộ naming exp3 hiện tại (`instance_label.csv`) để normalize đúng theo BKS.
+  - Chart style template đã được chuẩn hóa đồng nhất trong code: `title=16`, `label=12`, `legend=10`, line width/marker/palette dùng chung.
 
 Lưu ý workflow:
 - Nhiều script giả định chạy từ `cd backend` để path dữ liệu đúng.
@@ -143,6 +152,7 @@ Lưu ý workflow:
 - Các script có `--instances` đều báo lỗi thân thiện nếu nhập sai mã instance (vd: `C101,R101` là hợp lệ; nhập sai sẽ được gợi ý danh sách mã đúng).
 - Naming file CSV đã đồng bộ theo dạng `instance_label.csv` (ví dụ: `C101_full_hga.csv`, `C101_with_urgency.csv`).
 - Fairness benchmark đã đồng bộ ở nhóm `exp1/exp3/exp4/exp5`: khi so với BKS đều dùng `use_wait_penalty=False`.
+- `backend/requirements.txt` đã gồm `matplotlib` (vẽ biểu đồ) và `scipy` (Wilcoxon trong exp5).
 
 ## 7) Hướng dẫn chạy nhanh
 ```powershell
@@ -158,9 +168,11 @@ Chạy một vài script nghiên cứu:
 cd backend
 py -m experiments.benchmark_runner --instance C101 --num-runs 1
 py -m experiments.exp1_benchmark --instances C101,R101 --num-runs 3
+py -m experiments.exp2_personalization --instances C101,R101 --num-runs 2
 py -m experiments.exp3_ablation --instances C101 --num-runs 2
 py -m experiments.exp4_sensitivity --instances C101,RC101 --num-runs 2
 py -m experiments.exp5_urgency --instances C101 --num-runs 3
+py -m experiments.exp6_adaptive_mutation --instances C101,R101 --num-runs 3
 ```
 
 ## 8) Đánh giá mức độ hoàn thiện ở góc nhìn nghiên cứu
@@ -197,17 +209,16 @@ Kết luận:
 1. Đã xử lý: `greedy_refill` urgency đã dùng mốc thời gian theo trạng thái route hiện tại (thay vì luôn neo ở `start_time_minutes`).
 2. Đã xử lý: fairness benchmark giữa `exp1/exp3/exp4/exp5` đã đồng bộ (đều tắt `use_wait_penalty` khi so sánh theo BKS).
 3. Đã xử lý: naming output trong nhóm script benchmark đã đồng bộ theo `instance_label.csv`.
-4. Đã xử lý: `analyze_results.py` đã chuyển sang tự động đọc theo naming/flow hiện tại (exp1→exp5), giảm hardcode và giảm thao tác chỉnh tay khi tổng hợp.
+4. Đã xử lý: `analyze_results.py` đã chuyển sang tự động đọc theo naming/flow hiện tại (exp1→exp6), giảm hardcode và giảm thao tác chỉnh tay khi tổng hợp.
 5. API hiện đã nhận `instance_name` từ request; nếu mở rộng tiếp có thể thêm endpoint trả danh sách instance khả dụng để client không phải hardcode.
+6. Đã xử lý: mutation có thể chạy chế độ Adaptive-Lite 2 tầng (progress + stagnation/diversity/insert-fail feedback) qua cờ `use_adaptive_mutation`.
 
 ## 11) Đề xuất cải tiến ưu tiên cho thuật toán
 ### Ưu tiên cao
 - Bổ sung endpoint metadata nhẹ (vd: `/api/instances`) để client lấy danh sách instance hợp lệ trực tiếp từ backend.
-- Đồng bộ thêm `plot_charts.py` theo naming/flow mới để tránh lệch với `analyze_results.py` khi mở rộng thực nghiệm.
 
 ### Ưu tiên trung bình
 - Bổ sung local search mạnh hơn ngoài 2-opt/swap: relocate, or-opt, hoặc destroy-repair nhẹ.
-- Adaptive mutation rate theo mức stagnation/diversity thay vì cố định suốt run.
 - Tinh chỉnh dynamic penalty (đặc biệt budget/wait) theo giai đoạn tiến hóa để cân bằng exploration-exploitation.
 
 ### Ưu tiên nghiên cứu sâu

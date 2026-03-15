@@ -25,6 +25,34 @@ DEFAULT_TOURNAMENT_K:      int   = 3
 IMPROVEMENT_THRESHOLD:     float = 1e-4
 
 # =============================================================================
+#  ADAPTIVE-LITE MUTATION PARAMETERS
+#
+#  Tầng 1 (schedule theo progress):
+#    - Insert giảm dần: 0.45 -> 0.15
+#    - 2-opt tăng dần : 0.25 -> 0.55
+#    - Swap = phần còn lại
+#
+#  Tầng 2 (feedback):
+#    - Stagnation cao  -> tăng 2-opt
+#    - Diversity thấp  -> tăng swap
+#    - Insert fail cao -> giảm insert, dồn sang 2-opt
+# =============================================================================
+
+USE_ADAPTIVE_MUTATION_DEFAULT: bool = False
+ADAPTIVE_INSERT_START: float = 0.45
+ADAPTIVE_INSERT_END: float = 0.15
+ADAPTIVE_2OPT_START: float = 0.25
+ADAPTIVE_2OPT_END: float = 0.55
+
+ADAPTIVE_STAGNATION_TRIGGER: int = 8
+ADAPTIVE_LOW_DIVERSITY_THRESHOLD: float = 0.35
+ADAPTIVE_INSERT_FAIL_TRIGGER: float = 0.60
+ADAPTIVE_INSERT_FAIL_WINDOW: int = 5
+
+ADAPTIVE_MIN_PROB: float = 0.10
+ADAPTIVE_MAX_PROB: float = 0.80
+
+# =============================================================================
 #  PENALTY COEFFICIENTS  (Bảng hệ số phạt)
 #
 #  ┌─────────────────────────┬────────────┬──────────────────────────────────┐
