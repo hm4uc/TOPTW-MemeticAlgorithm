@@ -1,6 +1,6 @@
-Variant,Norm_Score%,Norm_Std,Time(s),Gens,Diff%,Norm_C101
-full_hga,96.88,,2.31,34.0,baseline,96.88
-no_smart_repair,96.88,,2.209,33.0,+0.00%,96.88
-no_insertion_mut,96.88,,3.404,34.0,+0.00%,96.88
-no_heuristic_init,96.88,,2.377,34.0,+0.00%,96.88
-no_diversity_check,96.88,,2.048,31.0,+0.00%,96.88
+Variant,Norm_Score%,Norm_Std,Time(s),Gens,Diff%,Norm_C101,Norm_C201,Norm_R101,Norm_R201,Norm_RC101,Norm_RC201
+full_hga,99.85,0.3,32.442,37.6,baseline,100.0,100.0,100.0,99.52,100.0,99.6
+no_smart_repair,99.38,0.98,34.406,40.6,-0.47%,100.0,99.77,100.0,98.59,100.0,97.94
+no_insertion_mut,99.89,0.23,29.012,39.6,+0.04%,100.0,100.0,100.0,99.5,100.0,99.85
+no_heuristic_init,99.89,0.23,29.103,36.9,+0.04%,100.0,100.0,100.0,99.5,100.0,99.85
+no_diversity_check,99.69,0.52,28.685,34.3,-0.16%,100.0,100.0,100.0,98.92,100.0,99.22

@@ -76,7 +76,6 @@ class HybridGeneticAlgorithm:
         use_wait_penalty: bool = True,         # False → PENALTY_WAIT = 0
         use_heuristic_init: bool = True,       # False → 100% Random Init
         use_diversity_check: bool = True,      # False → không check duplicate
-        use_urgency: bool = True,              # False → Labadie ratio gốc (không urgency)
         use_adaptive_mutation: bool = USE_ADAPTIVE_MUTATION_DEFAULT,
         # ── Tunable Parameters ──────────────────────────────────────
         population_size: int = POPULATION_SIZE,
@@ -101,7 +100,6 @@ class HybridGeneticAlgorithm:
         self.use_wait_penalty = use_wait_penalty
         self.use_heuristic_init = use_heuristic_init
         self.use_diversity_check = use_diversity_check
-        self.use_urgency = use_urgency
         self.use_adaptive_mutation = use_adaptive_mutation
 
         # ── GA Parameters ────────────────────────────────────────────────────
@@ -248,12 +246,11 @@ class HybridGeneticAlgorithm:
         self.population = initialize_population(
             self.pois, self.user_prefs,
             use_heuristic_init=self.use_heuristic_init,
-            use_urgency=self.use_urgency,
         )
         # ★ Repair + Greedy Refill cho MỖI cá thể khởi tạo
         for i, ind in enumerate(self.population):
             ind = repair(ind, self.user_prefs, self.use_smart_repair)
-            ind = greedy_refill(ind, self.pois, self.user_prefs, self.use_urgency)
+            ind = greedy_refill(ind, self.pois, self.user_prefs)
             calculate_fitness(ind, self.user_prefs, self.wait_penalty_weight)
             self.population[i] = ind
         self.population.sort(key=lambda ind: ind.fitness, reverse=True)
@@ -315,7 +312,7 @@ class HybridGeneticAlgorithm:
         """
         ind = _create_random_individual(self.pois, self.depot, self.user_prefs)
         ind = repair(ind, self.user_prefs, self.use_smart_repair)
-        ind = greedy_refill(ind, self.pois, self.user_prefs, self.use_urgency)
+        ind = greedy_refill(ind, self.pois, self.user_prefs)
         calculate_fitness(ind, self.user_prefs, self.wait_penalty_weight)
         return ind
 
@@ -375,7 +372,7 @@ class HybridGeneticAlgorithm:
                         insertion_success += 1
 
                 child = repair(child, self.user_prefs, self.use_smart_repair)
-                child = greedy_refill(child, self.pois, self.user_prefs, self.use_urgency)
+                child = greedy_refill(child, self.pois, self.user_prefs)
                 calculate_fitness(child, self.user_prefs, self.wait_penalty_weight)
                 children.append(child)
 

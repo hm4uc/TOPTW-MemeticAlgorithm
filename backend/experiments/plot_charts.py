@@ -7,8 +7,8 @@ Tạo:
   3. Route Scatter Plot: So sánh lộ trình Foodie vs History Buff
   4. Personalization Bar Chart: Category distribution theo profile
   5. Sensitivity Line Chart: Score vs Parameter value
-  6. Exp6 Boxplot: Static vs Adaptive-Lite (Normalized Score)
-  7. Exp6 Operator Curves: p_insert / p_2opt theo generation
+  6. Exp5 Boxplot: Static vs Adaptive-Lite (Normalized Score)
+  7. Exp5 Operator Curves: p_insert / p_2opt theo generation
 
 Usage:
     cd backend
@@ -412,9 +412,9 @@ def plot_sensitivity(results_dir: str = "experiments/results/exp4_sensitivity"):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  6. Exp6 Boxplot — Static vs Adaptive
+#  6. Exp5 Boxplot — Static vs Adaptive
 # ═══════════════════════════════════════════════════════════════════���══════════
-def plot_exp6_boxplot(results_dir: str = "experiments/results/exp6_adaptive_mutation"):
+def plot_exp5_boxplot(results_dir: str = "experiments/results/exp5_adaptive_mutation"):
     """Boxplot so sánh Normalized Score (%BKS) giữa static_mutation và adaptive_lite_2tier."""
     bks = {"C101": 320, "C201": 870, "R101": 198,
            "R201": 797, "RC101": 219, "RC201": 795}
@@ -444,7 +444,7 @@ def plot_exp6_boxplot(results_dir: str = "experiments/results/exp6_adaptive_muta
 
     available = [v for v in variants if variant_norm[v]]
     if not available:
-        print("  ⚠ Không đủ dữ liệu exp6 để vẽ boxplot")
+        print("  ⚠ Không đủ dữ liệu exp5 để vẽ boxplot")
         return
 
     data = [variant_norm[v] for v in available]
@@ -458,20 +458,20 @@ def plot_exp6_boxplot(results_dir: str = "experiments/results/exp6_adaptive_muta
         patch.set_alpha(0.75)
 
     ax.set_ylabel('Normalized Score (% of BKS)', fontsize=LABEL_SIZE)
-    ax.set_title('Exp6 — Static vs Adaptive-Lite Mutation', fontsize=SUBTITLE_SIZE)
+    ax.set_title('Exp5 — Static vs Adaptive-Lite Mutation', fontsize=SUBTITLE_SIZE)
     ax.grid(True, alpha=0.3, axis='y')
     plt.tight_layout()
 
-    path = os.path.join(CHART_DIR, "exp6_adaptive_boxplot.png")
+    path = os.path.join(CHART_DIR, "exp5_adaptive_boxplot.png")
     plt.savefig(path, dpi=300, bbox_inches='tight')
     plt.close()
     print(f"  ✅ {path}")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  7. Exp6 Operator Curves — p_insert / p_2opt
+#  7. Exp5 Operator Curves — p_insert / p_2opt
 # ══════════════════════════════════════════════════════════════════════════════
-def plot_exp6_operator_curves(results_dir: str = "experiments/results/exp6_adaptive_mutation"):
+def plot_exp5_operator_curves(results_dir: str = "experiments/results/exp5_adaptive_mutation"):
     """Vẽ xu hướng trung bình p_insert và p_2opt theo generation từ convergence_log của adaptive_lite_2tier."""
     pattern = os.path.join(results_dir, "*_adaptive_lite_2tier.csv")
     csv_files = sorted(glob.glob(pattern))
@@ -514,13 +514,13 @@ def plot_exp6_operator_curves(results_dir: str = "experiments/results/exp6_adapt
 
     plt.xlabel('Generation', fontsize=LABEL_SIZE)
     plt.ylabel('Operator Probability', fontsize=LABEL_SIZE)
-    plt.title('Exp6 — Adaptive Mutation Policy Over Generations', fontsize=SUBTITLE_SIZE)
+    plt.title('Exp5 — Adaptive Mutation Policy Over Generations', fontsize=SUBTITLE_SIZE)
     plt.ylim(0.0, 1.0)
     plt.legend(fontsize=LEGEND_SIZE)
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
 
-    path = os.path.join(CHART_DIR, "exp6_operator_curves.png")
+    path = os.path.join(CHART_DIR, "exp5_operator_curves.png")
     plt.savefig(path, dpi=300, bbox_inches='tight')
     plt.close()
     print(f"  ✅ {path}")
@@ -558,13 +558,13 @@ def main():
     print("\n[5] Sensitivity Analysis...")
     plot_sensitivity()
 
-    # 6. Exp6 Boxplot
-    print("\n[6] Exp6 Static vs Adaptive Boxplot...")
-    plot_exp6_boxplot()
+    # 6. Exp5 Boxplot
+    print("\n[6] Exp5 Static vs Adaptive Boxplot...")
+    plot_exp5_boxplot()
 
-    # 7. Exp6 Operator Curves
-    print("\n[7] Exp6 Operator Probability Curves...")
-    plot_exp6_operator_curves()
+    # 7. Exp5 Operator Curves
+    print("\n[7] Exp5 Operator Probability Curves...")
+    plot_exp5_operator_curves()
 
     print(f"\n{'=' * 60}")
     print(f"  ✅ TẤT CẢ ĐỒ THỊ ĐÃ ĐƯỢC LƯU VÀO: {CHART_DIR}")

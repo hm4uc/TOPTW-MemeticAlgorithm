@@ -1,0 +1,13 @@
+Instance,Variant,Norm%,Score,Wait,Time(s),Gens
+C101,static_mutation,100.0,320.0,29.32,6.63,26.0
+C101,adaptive_lite_2tier,100.0,320.0,29.32,6.314,26.0
+C201,static_mutation,100.0,870.0,5.08,36.484,32.8
+C201,adaptive_lite_2tier,100.0,870.0,16.01,33.404,32.4
+R101,static_mutation,100.0,198.0,0.2,5.526,27.2
+R101,adaptive_lite_2tier,100.0,198.0,0.2,4.866,27.0
+R201,static_mutation,99.52,793.2,11.31,70.913,54.2
+R201,adaptive_lite_2tier,99.5,793.0,10.17,72.953,60.8
+RC101,static_mutation,100.0,219.0,12.18,5.304,26.0
+RC101,adaptive_lite_2tier,100.0,219.0,12.18,4.867,25.8
+RC201,static_mutation,99.6,791.8,7.41,65.249,59.6
+RC201,adaptive_lite_2tier,99.85,793.8,2.69,64.461,62.6

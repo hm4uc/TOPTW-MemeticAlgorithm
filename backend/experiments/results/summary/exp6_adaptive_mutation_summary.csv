@@ -1,3 +1,0 @@
-Variant,Norm_Score%,Norm_Std,Wait_Avg,Time(s),Gens_Avg,Rows,Diff%_vs_static
-adaptive_lite_2tier,92.61,6.2,33.99,7.006,60.43,60,1.04
-static_mutation,91.57,6.84,34.79,6.448,58.37,60,0.0
