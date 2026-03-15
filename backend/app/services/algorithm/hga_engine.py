@@ -280,7 +280,18 @@ class HybridGeneticAlgorithm:
             contestants = random.sample(pop, min(self.tournament_k, len(pop)))
             return max(contestants, key=lambda ind: ind.fitness)
 
-        return tournament(population), tournament(population)
+        p1 = tournament(population)
+
+        if len(population) <= 1:
+            return p1, p1
+
+        p2 = tournament(population)
+        retries = 3
+        while p1 == p2 and retries > 0:
+            p2 = tournament(population)
+            retries -= 1
+
+        return p1, p2
 
     # ══════════════════════════════════════════════════════════════════════════
     #  Diversity Check (Chống đồng huyết)

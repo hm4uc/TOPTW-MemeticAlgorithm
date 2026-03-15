@@ -153,8 +153,7 @@ def _insertion_mutation(
     inserted_any = False
 
     for candidate in unvisited:
-        best_pos = -1
-        best_cost_increase = float('inf')
+        insert_options: list[tuple[int, float]] = []
 
         for pos in range(1, len(route)):
             prev_poi = route[pos - 1]
@@ -167,17 +166,17 @@ def _insertion_mutation(
                 + get_travel_time(candidate, next_poi)
             )
             cost_increase = new_travel - old_travel
+            insert_options.append((pos, cost_increase))
 
-            if cost_increase < best_cost_increase:
-                best_cost_increase = cost_increase
-                best_pos = pos
+        insert_options.sort(key=lambda x: x[1])
 
-        if best_pos > 0:
+        for pos, _ in insert_options:
             test_route = list(route)
-            test_route.insert(best_pos, candidate)
+            test_route.insert(pos, candidate)
             if check_constraints(test_route, user_prefs):
                 route = test_route
                 inserted_any = True
+                break
 
     individual.route = route
     return individual, inserted_any
