@@ -82,11 +82,15 @@ Normalization:
 
 ## 5) Hybrid GA implementation chi tiết
 ### 5.1 Khởi tạo
-- Mặc định 100 cá thể (`POPULATION_SIZE`).
+- Mặc định 150 cá thể (`POPULATION_SIZE`).
 - `use_heuristic_init=True`:
-  - 80 cá thể từ Randomized Insertion Heuristic (Labadie ratio).
-  - 20 cá thể random.
+  - 120 cá thể từ Randomized Insertion Heuristic (Labadie ratio).
+  - 30 cá thể random.
 - `use_heuristic_init=False`: 100% random (ablation).
+- Tham số GA mặc định đang dùng cho benchmark/research:
+  - `mutation_rate = 0.3`
+  - `tournament_k = 2`
+  - `stagnation_limit = 25`
 
 ### 5.2 Fitness và ràng buộc
 Fitness tại `fitness.py`:

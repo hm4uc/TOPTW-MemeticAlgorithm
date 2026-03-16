@@ -46,9 +46,9 @@ PARAM_GRID = {
 
 # Giá trị mặc định
 DEFAULTS = {
-    "population_size": 100,
-    "mutation_rate": 0.7,
-    "tournament_k": 3,
+    "population_size": 150,
+    "mutation_rate": 0.3,
+    "tournament_k": 2,
     "stagnation_limit": 25,
 }
 

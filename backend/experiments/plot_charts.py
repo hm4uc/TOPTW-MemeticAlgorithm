@@ -158,96 +158,170 @@ def plot_convergence(csv_path: str, output_name: str = "convergence"):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  2. Ablation Boxplot  (BKS reference + mean dots + readable labels)
+#  2. Ablation Study  (Two-panel: per-instance grouped bar + delta heatmap)
 # ══════════════════════════════════════════════════════════════════════════════
 def plot_ablation_boxplot(results_dir: str = "experiments/results/exp3_ablation"):
     """
-    Cải tiến:
-      - Đường tham chiếu BKS = 100%
-      - Mean được đánh dấu bằng tam giác đỏ
-      - Label thân thiện hơn
-      - Y-axis bắt đầu từ 96% thay vì 0% để phóng đại sự khác biệt nhỏ
+    Redesigned ablation chart — hai panel riêng biệt để tránh noise khi pool instances:
+
+    Root causes của noise cũ:
+      1) Pool tất cả instances vào một boxplot → scale khác nhau (BKS C101=320 vs C201=870)
+         gây ra phân tán nhân tạo. Dù normalize thì vẫn bị ảnh hưởng vì các instances
+         dễ/khó khác nhau (C101 luôn đạt 100%, RC201 biến động nhiều).
+      2) Outlier từ RC201 (std ~0.5-1%) kéo whisker xuống thấp cho mọi variant.
+      3) Filename duplicates (C101_full_hga_C101.csv) có thể load nhầm.
+
+    Giải pháp — Hiển thị hai panel:
+      LEFT:  Grouped bar theo từng instance → thấy CHÍNH XÁC variant nào tệ ở đâu
+      RIGHT: Delta bar (variant - full_hga) per instance → thấy IMPACT thực sự
+             — Không còn noise do scale/pooling
     """
-    VARIANT_LABELS = {
-        "full_hga":           "Full HGA\n(baseline)",
-        "no_smart_repair":    "No Smart\nRepair",
-        "no_insertion_mut":   "No Insertion\nMutation",
-        "no_heuristic_init":  "No Heuristic\nInit",
-        "no_diversity_check": "No Diversity\nCheck",
+    VARIANT_INFO = {
+        "full_hga":           ("Full HGA",          PALETTE["green"]),
+        "no_smart_repair":    ("No Smart Repair",    PALETTE["orange"]),
+        "no_insertion_mut":   ("No Ins. Mutation",   PALETTE["blue"]),
+        "no_heuristic_init":  ("No Heuristic Init",  PALETTE["purple"]),
+        "no_diversity_check": ("No Diversity Check", PALETTE["teal"]),
     }
-    variants = list(VARIANT_LABELS.keys())
+    variants = list(VARIANT_INFO.keys())
 
-    rows = []
-    for f in sorted(glob.glob(os.path.join(results_dir, "*.csv"))):
-        stem  = os.path.splitext(os.path.basename(f))[0]
-        parts = stem.split("_", 1)
-        if len(parts) != 2:
-            continue
-        inst, variant = parts[0], parts[1]
-        if inst not in BKS or variant not in variants:
-            continue
-        df = pd.read_csv(f)
-        if "total_score" not in df.columns:
-            continue
-        tmp = df[["total_score"]].copy()
-        tmp["variant"]    = variant
-        tmp["norm_score"] = tmp["total_score"] / BKS[inst] * 100
-        rows.append(tmp)
+    # ── Load data — canonical files only (no duplicate suffix) ─────────────────
+    # Canonical: {INST}_{variant}.csv where variant does NOT contain inst name again
+    data = {}  # variant -> {inst -> mean_norm}
+    for variant in variants:
+        data[variant] = {}
+        for inst, bks in BKS.items():
+            canonical = os.path.join(results_dir, f"{inst}_{variant}.csv")
+            if not os.path.exists(canonical):
+                continue
+            df = pd.read_csv(canonical)
+            if "total_score" not in df.columns:
+                continue
+            data[variant][inst] = np.mean(df["total_score"].values) / bks * 100.0
 
-    if not rows:
+    exist_variants = [v for v in variants if data[v]]
+    if not exist_variants:
         print("  WARN  no ablation data found")
         return
 
-    all_data     = cast(pd.DataFrame, pd.concat(rows, ignore_index=True))
-    exist_order  = [v for v in variants if v in all_data["variant"].unique()]
-    plot_data    = [all_data[all_data["variant"] == v]["norm_score"].values
-                    for v in exist_order]
+    # ── Build delta matrix: variant - full_hga, per instance ───────────────────
+    baseline = data.get("full_hga", {})
+    non_baseline = [v for v in exist_variants if v != "full_hga"]
 
-    box_colors = [PALETTE["green"],  PALETTE["orange"], PALETTE["blue"],
-                  PALETTE["purple"], PALETTE["teal"]]
+    fig, (ax_left, ax_right) = plt.subplots(
+        1, 2, figsize=(18, 7),
+        gridspec_kw={"width_ratios": [1.6, 1.4]}
+    )
 
-    fig, ax = plt.subplots(figsize=(11, 6))
-    bp = ax.boxplot(plot_data, patch_artist=True, widths=0.55,
-                    medianprops=dict(color="black", linewidth=2),
-                    whiskerprops=dict(linewidth=1.2),
-                    capprops=dict(linewidth=1.2),
-                    flierprops=dict(marker="o", markersize=4, alpha=0.5))
+    # ══ LEFT PANEL: Per-instance grouped bar ═══════════════════════════════════
+    n_inst    = len(INSTANCES)
+    n_var     = len(exist_variants)
+    x         = np.arange(n_inst)
+    bar_w     = 0.8 / n_var
 
-    for patch, color in zip(bp["boxes"], box_colors[:len(exist_order)]):
-        patch.set_facecolor(color)
-        patch.set_alpha(0.72)
+    for j, variant in enumerate(exist_variants):
+        label, color = VARIANT_INFO[variant]
+        means = [data[variant].get(inst, np.nan) for inst in INSTANCES]
+        offset = (j - n_var / 2 + 0.5) * bar_w
+        bars = ax_left.bar(x + offset, means, bar_w * 0.92,
+                           label=label, color=color, alpha=0.85,
+                           edgecolor="white", linewidth=0.4)
+        # Annotate bars that are meaningfully below BKS
+        for bar_obj, m in zip(bars, means):
+            if not np.isnan(m) and m < 99.9:
+                ax_left.text(bar_obj.get_x() + bar_obj.get_width() / 2,
+                             bar_obj.get_height() - 0.05,
+                             f"{m:.2f}", ha="center", va="top",
+                             fontsize=6, color="white", fontweight="bold")
 
-    # Mean markers
-    for i, data in enumerate(plot_data, start=1):
-        m = np.mean(data)
-        ax.scatter(i, m, marker="^", color="red", s=60, zorder=5)
-        ax.annotate(f"{m:.2f}%", xy=(i, m), xytext=(6, 4),
-                    textcoords="offset points", fontsize=7, color="red")
+    ax_left.axhline(100, color="black", linewidth=1.2, linestyle="--", alpha=0.5)
 
-    # BKS reference line
-    ax.axhline(100, color="black", linewidth=1.2, linestyle="--", alpha=0.6)
-    ax.text(len(exist_order) + 0.55, 100.05, "BKS = 100%",
-            fontsize=8, va="bottom", color="black", alpha=0.7)
+    # Annotate BKS line
+    ax_left.text(n_inst - 0.5, 100.05, "BKS = 100%",
+                 fontsize=8, color="gray", va="bottom", ha="right")
 
-    friendly_labels = [VARIANT_LABELS.get(v, v) for v in exist_order]
-    ax.set_xticks(range(1, len(exist_order) + 1))
-    ax.set_xticklabels(friendly_labels, fontsize=10)
-    ax.set_ylabel("Normalized Score (% of BKS)", fontsize=LABEL_SIZE)
-    ax.set_title("Ablation Study — Component Contribution\n(Normalized over 6 Solomon instances)",
-                 fontsize=SUBTITLE_SIZE, fontweight="bold")
+    ax_left.set_xticks(x)
+    ax_left.set_xticklabels(INSTANCES, fontsize=11)
+    ax_left.set_ylabel("Normalized Score (% of BKS)", fontsize=LABEL_SIZE)
+    ax_left.set_title("Per-Instance Score by Variant\n(Each bar = mean of 5 runs)",
+                      fontsize=SUBTITLE_SIZE, fontweight="bold")
 
-    # Zoom Y to show differences clearly
-    all_vals = np.concatenate(plot_data)
-    ax.set_ylim(max(94, all_vals.min() - 1), 101.5)
-    ax.grid(True, alpha=0.25, axis="y", linestyle="--")
+    # Dynamic Y range: zoom into the actual spread (highlight differences)
+    all_means = [v for variant in exist_variants
+                 for v in data[variant].values() if not np.isnan(v)]
+    spread = max(all_means) - min(all_means)
+    # Margin = 20% of spread below the min, to show bars clearly
+    margin = max(0.3, spread * 0.2)
+    ymin = max(96.5, min(all_means) - margin)
+    ax_left.set_ylim(ymin, 101.2)
+    ax_left.legend(fontsize=LEGEND_SIZE, loc="lower right", framealpha=0.9,
+                   ncol=2)
+    ax_left.grid(True, alpha=0.22, axis="y", linestyle="--")
 
-    mean_patch = Line2D([0], [0], marker="^", color="w", markerfacecolor="red",
-                        markersize=7, label="Mean")
-    bks_line   = Line2D([0], [0], linestyle="--", color="black", lw=1.2,
-                        alpha=0.6, label="BKS = 100%")
-    ax.legend(handles=[mean_patch, bks_line], fontsize=LEGEND_SIZE,
-              loc="lower right", framealpha=0.9)
+    # ══ RIGHT PANEL: Delta bar (mean degradation vs full_hga) ══════════════════
+    # For each non-baseline variant: compute mean delta across all instances
+    deltas      = {}   # variant -> [delta_per_inst]
+    for variant in non_baseline:
+        d = []
+        for inst in INSTANCES:
+            b = baseline.get(inst)
+            v = data[variant].get(inst)
+            if b is not None and v is not None:
+                d.append(v - b)
+        deltas[variant] = d
 
+    x2    = np.arange(len(non_baseline))
+    bar_w2 = 0.55
+
+    inst_colors = [PALETTE["blue"], PALETTE["orange"], PALETTE["green"],
+                   PALETTE["red"],  PALETTE["purple"], PALETTE["teal"]]
+
+    # Stacked bar where each segment = one instance's delta
+    bottoms = np.zeros(len(non_baseline))   # not used for grouped; we do grouped
+    # Use grouped dots + bar instead — one bar set per instance
+    bar_width_inst = bar_w2 / len(INSTANCES)
+    for k, inst in enumerate(INSTANCES):
+        vals = [deltas[v][k] if k < len(deltas[v]) else 0
+                for v in non_baseline]
+        offset = (k - len(INSTANCES)/2 + 0.5) * bar_width_inst
+        ax_right.bar(x2 + offset, vals, bar_width_inst * 0.9,
+                     label=inst, color=inst_colors[k], alpha=0.80,
+                     edgecolor="white", linewidth=0.3)
+
+    # Mean delta line on top
+    mean_deltas = [np.mean(deltas[v]) for v in non_baseline]
+    ax_right.plot(x2, mean_deltas, "D--", color="black", linewidth=1.8,
+                  markersize=8, zorder=10, label="Mean Δ")
+    for xi, md in zip(x2, mean_deltas):
+        color = "#D32F2F" if md < 0 else "#388E3C"
+        sign  = "+" if md >= 0 else ""
+        ax_right.annotate(f"{sign}{md:.3f}%",
+                          xy=(xi, md),
+                          xytext=(0, 10 if md >= 0 else -14),
+                          textcoords="offset points",
+                          ha="center", fontsize=9,
+                          color=color, fontweight="bold")
+
+    ax_right.axhline(0, color="black", linewidth=1.2, linestyle="-", alpha=0.35)
+    ax_right.set_xticks(x2)
+    ax_right.set_xticklabels(
+        [VARIANT_INFO[v][0].replace(" ", "\n") for v in non_baseline],
+        fontsize=9.5
+    )
+    ax_right.set_ylabel("Score Δ vs Full HGA (%)", fontsize=LABEL_SIZE)
+    ax_right.set_title("Component Impact\n(Δ = variant mean − Full HGA mean, per instance)",
+                       fontsize=SUBTITLE_SIZE, fontweight="bold")
+    ax_right.legend(fontsize=LEGEND_SIZE, framealpha=0.9, title="Instance",
+                    title_fontsize=8, loc="lower left", ncol=2)
+    ax_right.grid(True, alpha=0.22, axis="y", linestyle="--")
+
+    # Shade the negative zone
+    ylim2 = ax_right.get_ylim()
+    ax_right.axhspan(ylim2[0], 0, color="red",   alpha=0.04, zorder=0)
+    ax_right.axhspan(0, ylim2[1], color="green", alpha=0.04, zorder=0)
+
+    plt.suptitle("Ablation Study — Component Contribution Analysis",
+                 fontsize=TITLE_SIZE, fontweight="bold", y=1.01)
     plt.tight_layout()
     _savefig(os.path.join(CHART_DIR, "ablation_boxplot.png"))
 
@@ -482,8 +556,8 @@ def plot_sensitivity(results_dir: str = "experiments/results/exp4_sensitivity"):
         "tournament_k":     "Tournament Size (k)",
         "stagnation_limit": "Stagnation Limit",
     }
-    defaults = {"population_size": 100, "mutation_rate": 0.7,
-                "tournament_k": 3, "stagnation_limit": 25}
+    defaults = {"population_size": 150, "mutation_rate": 0.3,
+                "tournament_k": 2, "stagnation_limit": 25}
 
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
     axes = axes.flatten()
