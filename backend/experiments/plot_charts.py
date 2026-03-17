@@ -556,18 +556,15 @@ def plot_sensitivity(results_dir: str = "experiments/results/exp4_sensitivity"):
         "tournament_k":     "Tournament Size (k)",
         "stagnation_limit": "Stagnation Limit",
     }
-    defaults = {"population_size": 150, "mutation_rate": 0.3,
-                "tournament_k": 2, "stagnation_limit": 25}
+    defaults = {"population_size": 100, "mutation_rate": 0.3,
+                "tournament_k": 3, "stagnation_limit": 25}
 
-    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
-    axes = axes.flatten()
+    # ── Pre-collect all data to find global scales ───────────────────────────
+    all_data = {}
+    global_max_time = 0
 
-    for idx, (param, values) in enumerate(param_grid.items()):
-        ax1 = axes[idx]
-        ax2 = ax1.twinx()
-
-        means_score, stds_score, means_time = [], [], []
-
+    for param, values in param_grid.items():
+        all_data[param] = {"values": values, "means_score": [], "stds_score": [], "means_time": []}
         for val in values:
             norm_scores, times = [], []
             for inst in INSTANCES:
@@ -576,12 +573,32 @@ def plot_sensitivity(results_dir: str = "experiments/results/exp4_sensitivity"):
                     df = pd.read_csv(csv_path)
                     norm_scores.extend((df["total_score"] / BKS[inst] * 100).tolist())
                     times.extend(df["execution_time"].tolist())
-            means_score.append(np.mean(norm_scores) if norm_scores else 0)
-            stds_score.append(np.std(norm_scores)   if norm_scores else 0)
-            means_time.append(np.mean(times)         if times else 0)
+            
+            m_score = np.mean(norm_scores) if norm_scores else 0
+            s_score = np.std(norm_scores)   if norm_scores else 0
+            m_time  = np.mean(times)         if times else 0
+            
+            all_data[param]["means_score"].append(m_score)
+            all_data[param]["stds_score"].append(s_score)
+            all_data[param]["means_time"].append(m_time)
+            
+            if m_time > global_max_time:
+                global_max_time = m_time
 
-        arr_score = np.array(means_score)
-        arr_std   = np.array(stds_score)
+    # Buffer for y2 axis
+    y2_max = (int(global_max_time / 5) + 1) * 5 if global_max_time > 0 else 50
+
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+    axes = axes.flatten()
+
+    for idx, (param, data) in enumerate(all_data.items()):
+        ax1 = axes[idx]
+        ax2 = ax1.twinx()
+        
+        values = data["values"]
+        arr_score = np.array(data["means_score"])
+        arr_std   = np.array(data["stds_score"])
+        means_time = data["means_time"]
 
         # Score line + std band
         l1, = ax1.plot(values, arr_score, "o-",
@@ -598,16 +615,29 @@ def plot_sensitivity(results_dir: str = "experiments/results/exp4_sensitivity"):
         # Shade default column
         default_val = defaults[param]
         if default_val in values:
-            di = values.index(default_val)
             # Vertical band centered on default
-            half_gap = (values[1] - values[0]) * 0.4 if len(values) > 1 else 5
-            ax1.axvspan(default_val - half_gap, default_val + half_gap,
-                        color="gray", alpha=0.08, zorder=0)
-            ax1.axvline(default_val, color="gray", linestyle=":", linewidth=1.2,
-                        alpha=0.6, zorder=0)
-            ax1.annotate("default", xy=(default_val, ax1.get_ylim()[0]),
-                         xytext=(0, 3), textcoords="offset points",
-                         ha="center", fontsize=7, color="gray")
+            # Use original values for spacing even if x-axis is categorical
+            try:
+                # Find index of default_val
+                v_idx = values.index(default_val)
+                # Estimate half-gap based on actual neighbor values
+                if len(values) > 1:
+                    if v_idx < len(values) - 1:
+                        half_gap = (values[v_idx+1] - values[v_idx]) * 0.4
+                    else:
+                        half_gap = (values[v_idx] - values[v_idx-1]) * 0.4
+                else:
+                    half_gap = 1.0
+
+                ax1.axvspan(default_val - half_gap, default_val + half_gap,
+                            color="gray", alpha=0.08, zorder=0)
+                ax1.axvline(default_val, color="gray", linestyle=":", linewidth=1.2,
+                            alpha=0.6, zorder=0)
+                ax1.annotate("default", xy=(default_val, ax1.get_ylim()[0]),
+                             xytext=(0, 3), textcoords="offset points",
+                             ha="center", fontsize=7, color="gray")
+            except ValueError:
+                pass
 
         ax1.set_xlabel(param_titles[param], fontsize=LABEL_SIZE)
         ax1.set_ylabel("Normalized Score (% of BKS)", fontsize=10,
@@ -615,6 +645,14 @@ def plot_sensitivity(results_dir: str = "experiments/results/exp4_sensitivity"):
         ax2.set_ylabel("Execution Time (s)", fontsize=10, color=PALETTE["orange"])
         ax1.tick_params(axis="y", labelcolor=PALETTE["blue"])
         ax2.tick_params(axis="y", labelcolor=PALETTE["orange"])
+        
+        # Synchronize Y2 Axis
+        ax2.set_ylim(0, y2_max)
+        if y2_max <= 50:
+            ax2.set_yticks(np.arange(0, y2_max + 1, 5))
+        elif y2_max <= 200:
+            ax2.set_yticks(np.arange(0, y2_max + 1, 20))
+        
         ax1.set_title(f"Sensitivity: {param_titles[param]}",
                       fontsize=SUBTITLE_SIZE, fontweight="bold")
         ax1.grid(True, alpha=0.25, linestyle="--")
