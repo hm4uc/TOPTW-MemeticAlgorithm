@@ -1,14 +1,13 @@
 """
-Visualization — Vẽ đồ thị cho báo cáo khóa luận.
+Visualization - Vẽ đồ thị cho báo cáo khóa luận.
 
 Tạo:
   1. Convergence Curve: Best/Avg Fitness vs Generation (multi-run band)
-  2. Ablation Boxplot:  Normalized Score + mean annotation + BKS reference line
-  3. Route Scatter Plot: Foodie vs History Buff (colored by category)
-  4. Personalization Bar Chart: Stacked % + grouped absolute (merged C101+C201)
-  5. Sensitivity Line Charts: Score (left) + Time (right) dual-axis
-  6. Adaptive Boxplot: Swarmplot overlay + mean annotation + per-instance delta
-  7. Adaptive Operator Curves: Smooth rolling-avg + shaded band
+  2. Route Scatter Plot: Foodie vs History Buff (colored by category)
+  3. Personalization Bar Chart: Stacked % + grouped absolute (merged C101+C201)
+  4. Sensitivity Line Charts: Score (left) + Time (right) dual-axis
+  5. Budget Impact (Exp3): Category distribution + Score/POIs
+  6. Ablation Convergence (Exp4): Normalized best score vs generation
 
 Usage:
     cd backend
@@ -19,13 +18,13 @@ import os
 import sys
 import json
 import glob
-from typing import cast
 
 import pandas as pd
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+from matplotlib.artist import Artist
 from matplotlib.lines import Line2D
 
 # ── Font & DPI ─────────────────────────────────────────────────────────────────
@@ -148,180 +147,13 @@ def plot_convergence(csv_path: str, output_name: str = "convergence"):
                 arrowprops=dict(arrowstyle="->", color=PALETTE["blue"], lw=1.0))
 
     ax.set_xlabel("Generation", fontsize=LABEL_SIZE)
-    ax.set_ylabel("Fitness Value", fontsize=LABEL_SIZE)
-    ax.set_title(f"Convergence Curve — Instance {instance}", fontsize=SUBTITLE_SIZE, fontweight="bold")
+    ax.set_ylabel("Fitness value", fontsize=LABEL_SIZE)
+    ax.set_title(f"Convergence curve - Instance {instance}", fontsize=SUBTITLE_SIZE, fontweight="bold")
     ax.legend(fontsize=LEGEND_SIZE, framealpha=0.9)
     ax.grid(True, alpha=0.25, linestyle="--")
     plt.tight_layout()
 
     _savefig(os.path.join(CHART_DIR, f"{output_name}.png"))
-
-
-# (Ablation study chart removed — replaced by Adaptive Mutation in exp3)
-def plot_ablation_boxplot(results_dir: str = "experiments/results/exp3_ablation"):
-    """
-    Redesigned ablation chart — hai panel riêng biệt để tránh noise khi pool instances:
-
-    Root causes của noise cũ:
-      1) Pool tất cả instances vào một boxplot → scale khác nhau (BKS C101=320 vs C201=870)
-         gây ra phân tán nhân tạo. Dù normalize thì vẫn bị ảnh hưởng vì các instances
-         dễ/khó khác nhau (C101 luôn đạt 100%, RC201 biến động nhiều).
-      2) Outlier từ RC201 (std ~0.5-1%) kéo whisker xuống thấp cho mọi variant.
-      3) Filename duplicates (C101_full_hga_C101.csv) có thể load nhầm.
-
-    Giải pháp — Hiển thị hai panel:
-      LEFT:  Grouped bar theo từng instance → thấy CHÍNH XÁC variant nào tệ ở đâu
-      RIGHT: Delta bar (variant - full_hga) per instance → thấy IMPACT thực sự
-             — Không còn noise do scale/pooling
-    """
-    VARIANT_INFO = {
-        "full_hga":           ("Full HGA",          PALETTE["green"]),
-        "no_smart_repair":    ("No Smart Repair",    PALETTE["orange"]),
-        "no_insertion_mut":   ("No Ins. Mutation",   PALETTE["blue"]),
-        "no_heuristic_init":  ("No Heuristic Init",  PALETTE["purple"]),
-        "no_diversity_check": ("No Diversity Check", PALETTE["teal"]),
-    }
-    variants = list(VARIANT_INFO.keys())
-
-    # ── Load data — canonical files only (no duplicate suffix) ─────────────────
-    # Canonical: {INST}_{variant}.csv where variant does NOT contain inst name again
-    data = {}  # variant -> {inst -> mean_norm}
-    for variant in variants:
-        data[variant] = {}
-        for inst, bks in BKS.items():
-            canonical = os.path.join(results_dir, f"{inst}_{variant}.csv")
-            if not os.path.exists(canonical):
-                continue
-            df = pd.read_csv(canonical)
-            if "total_score" not in df.columns:
-                continue
-            data[variant][inst] = np.mean(df["total_score"].values) / bks * 100.0
-
-    exist_variants = [v for v in variants if data[v]]
-    if not exist_variants:
-        print("  WARN  no ablation data found")
-        return
-
-    # ── Build delta matrix: variant - full_hga, per instance ───────────────────
-    baseline = data.get("full_hga", {})
-    non_baseline = [v for v in exist_variants if v != "full_hga"]
-
-    fig, (ax_left, ax_right) = plt.subplots(
-        1, 2, figsize=(18, 7),
-        gridspec_kw={"width_ratios": [1.6, 1.4]}
-    )
-
-    # ══ LEFT PANEL: Per-instance grouped bar ═══════════════════════════════════
-    n_inst    = len(INSTANCES)
-    n_var     = len(exist_variants)
-    x         = np.arange(n_inst)
-    bar_w     = 0.8 / n_var
-
-    for j, variant in enumerate(exist_variants):
-        label, color = VARIANT_INFO[variant]
-        means = [data[variant].get(inst, np.nan) for inst in INSTANCES]
-        offset = (j - n_var / 2 + 0.5) * bar_w
-        bars = ax_left.bar(x + offset, means, bar_w * 0.92,
-                           label=label, color=color, alpha=0.85,
-                           edgecolor="white", linewidth=0.4)
-        # Annotate bars that are meaningfully below BKS
-        for bar_obj, m in zip(bars, means):
-            if not np.isnan(m) and m < 99.9:
-                ax_left.text(bar_obj.get_x() + bar_obj.get_width() / 2,
-                             bar_obj.get_height() - 0.05,
-                             f"{m:.2f}", ha="center", va="top",
-                             fontsize=6, color="white", fontweight="bold")
-
-    ax_left.axhline(100, color="black", linewidth=1.2, linestyle="--", alpha=0.5)
-
-    # Annotate BKS line
-    ax_left.text(n_inst - 0.5, 100.05, "BKS = 100%",
-                 fontsize=8, color="gray", va="bottom", ha="right")
-
-    ax_left.set_xticks(x)
-    ax_left.set_xticklabels(INSTANCES, fontsize=11)
-    ax_left.set_ylabel("Normalized Score (% of BKS)", fontsize=LABEL_SIZE)
-    ax_left.set_title("Per-Instance Score by Variant\n(Each bar = mean of 5 runs)",
-                      fontsize=SUBTITLE_SIZE, fontweight="bold")
-
-    # Dynamic Y range: zoom into the actual spread (highlight differences)
-    all_means = [v for variant in exist_variants
-                 for v in data[variant].values() if not np.isnan(v)]
-    spread = max(all_means) - min(all_means)
-    # Margin = 20% of spread below the min, to show bars clearly
-    margin = max(0.3, spread * 0.2)
-    ymin = max(96.5, min(all_means) - margin)
-    ax_left.set_ylim(ymin, 101.2)
-    ax_left.legend(fontsize=LEGEND_SIZE, loc="lower right", framealpha=0.9,
-                   ncol=2)
-    ax_left.grid(True, alpha=0.22, axis="y", linestyle="--")
-
-    # ══ RIGHT PANEL: Delta bar (mean degradation vs full_hga) ══════════════════
-    # For each non-baseline variant: compute mean delta across all instances
-    deltas      = {}   # variant -> [delta_per_inst]
-    for variant in non_baseline:
-        d = []
-        for inst in INSTANCES:
-            b = baseline.get(inst)
-            v = data[variant].get(inst)
-            if b is not None and v is not None:
-                d.append(v - b)
-        deltas[variant] = d
-
-    x2    = np.arange(len(non_baseline))
-    bar_w2 = 0.55
-
-    inst_colors = [PALETTE["blue"], PALETTE["orange"], PALETTE["green"],
-                   PALETTE["red"],  PALETTE["purple"], PALETTE["teal"]]
-
-    # Stacked bar where each segment = one instance's delta
-    bottoms = np.zeros(len(non_baseline))   # not used for grouped; we do grouped
-    # Use grouped dots + bar instead — one bar set per instance
-    bar_width_inst = bar_w2 / len(INSTANCES)
-    for k, inst in enumerate(INSTANCES):
-        vals = [deltas[v][k] if k < len(deltas[v]) else 0
-                for v in non_baseline]
-        offset = (k - len(INSTANCES)/2 + 0.5) * bar_width_inst
-        ax_right.bar(x2 + offset, vals, bar_width_inst * 0.9,
-                     label=inst, color=inst_colors[k], alpha=0.80,
-                     edgecolor="white", linewidth=0.3)
-
-    # Mean delta line on top
-    mean_deltas = [np.mean(deltas[v]) for v in non_baseline]
-    ax_right.plot(x2, mean_deltas, "D--", color="black", linewidth=1.8,
-                  markersize=8, zorder=10, label="Mean Δ")
-    for xi, md in zip(x2, mean_deltas):
-        color = "#D32F2F" if md < 0 else "#388E3C"
-        sign  = "+" if md >= 0 else ""
-        ax_right.annotate(f"{sign}{md:.3f}%",
-                          xy=(xi, md),
-                          xytext=(0, 10 if md >= 0 else -14),
-                          textcoords="offset points",
-                          ha="center", fontsize=9,
-                          color=color, fontweight="bold")
-
-    ax_right.axhline(0, color="black", linewidth=1.2, linestyle="-", alpha=0.35)
-    ax_right.set_xticks(x2)
-    ax_right.set_xticklabels(
-        [VARIANT_INFO[v][0].replace(" ", "\n") for v in non_baseline],
-        fontsize=9.5
-    )
-    ax_right.set_ylabel("Score Δ vs Full HGA (%)", fontsize=LABEL_SIZE)
-    ax_right.set_title("Component Impact\n(Δ = variant mean − Full HGA mean, per instance)",
-                       fontsize=SUBTITLE_SIZE, fontweight="bold")
-    ax_right.legend(fontsize=LEGEND_SIZE, framealpha=0.9, title="Instance",
-                    title_fontsize=8, loc="lower left", ncol=2)
-    ax_right.grid(True, alpha=0.22, axis="y", linestyle="--")
-
-    # Shade the negative zone
-    ylim2 = ax_right.get_ylim()
-    ax_right.axhspan(ylim2[0], 0, color="red",   alpha=0.04, zorder=0)
-    ax_right.axhspan(0, ylim2[1], color="green", alpha=0.04, zorder=0)
-
-    plt.suptitle("Ablation Study — Component Contribution Analysis",
-                 fontsize=TITLE_SIZE, fontweight="bold", y=1.01)
-    plt.tight_layout()
-    _savefig(os.path.join(CHART_DIR, "ablation_boxplot.png"))
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -405,15 +237,15 @@ def plot_route_comparison(results_dir: str = "experiments/results/exp2_personali
                    marker="*", zorder=5, edgecolors="black", linewidths=0.8)
 
         # Legend for categories
-        legend_patches = [
+        legend_handles: list[Artist] = [
             mpatches.Patch(facecolor=v, label=k.replace("_", " ").title(), edgecolor="white")
             for k, v in CAT_COLOR_POI.items() if k != "depot"
         ]
-        legend_patches.append(
+        legend_handles.append(
             Line2D([0], [0], marker="*", color="w", markerfacecolor=PALETTE["gold"],
                    markersize=11, label="Depot")
         )
-        ax.legend(handles=legend_patches, fontsize=8, loc="upper right",
+        ax.legend(handles=legend_handles, fontsize=8, loc="upper right",
                   framealpha=0.9, title="Category", title_fontsize=8)
 
         ax.set_title(f"{title}\n({len(route)-2} POIs visited)",
@@ -526,7 +358,7 @@ def plot_personalization_bars(results_dir: str = "experiments/results/exp2_perso
     ax2.grid(True, alpha=0.25, axis="y", linestyle="--")
 
     inst_used = data[profiles[0]]["inst"]
-    plt.suptitle(f"Personalization Effect — Instance {inst_used}",
+    plt.suptitle(f"Personalization effect - Instance {inst_used}",
                  fontsize=TITLE_SIZE, fontweight="bold", y=1.02)
     plt.tight_layout()
     _savefig(os.path.join(CHART_DIR, "personalization_bars.png"))
@@ -660,229 +492,12 @@ def plot_sensitivity(results_dir: str = "experiments/results/exp5_sensitivity"):
         ax1.legend(lines, labels, fontsize=LEGEND_SIZE, loc="lower right",
                    framealpha=0.9)
 
-    plt.suptitle("Sensitivity Analysis — Score vs Execution Time Trade-off\n"
+    plt.suptitle("Sensitivity analysis - Score vs Execution time Trade-off\n"
                  "(Averaged over 6 Solomon instances, 5 runs each)",
                  fontsize=TITLE_SIZE, fontweight="bold")
     plt.tight_layout()
     _savefig(os.path.join(CHART_DIR, "sensitivity_analysis.png"))
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  5. Adaptive Boxplot  (swarm-like jitter + per-instance delta table)
-# ══════════════════════════════════════════════════════════════════════════════
-def plot_exp3_boxplot(results_dir: str = "experiments/results/exp3_adaptive_mutation"):
-    """
-    Cải tiến:
-      - Jittered dots overlay để thấy individual data points
-      - Per-instance mean comparison trên cùng figure
-      - Delta annotation rõ ràng
-    """
-    variants       = ["static_mutation", "adaptive_lite_2tier"]
-    variant_labels = ["Static\nMutation", "Adaptive-Lite\n(2-tier)"]
-
-    variant_norm  = {v: [] for v in variants}
-    per_inst_norm = {v: {} for v in variants}
-
-    for f in sorted(glob.glob(os.path.join(results_dir, "*.csv"))):
-        stem  = os.path.splitext(os.path.basename(f))[0]
-        parts = stem.split("_", 1)
-        if len(parts) != 2:
-            continue
-        inst, lbl = parts[0], parts[1]
-        if inst not in BKS or lbl not in variant_norm:
-            continue
-        df = pd.read_csv(f)
-        if "total_score" not in df.columns:
-            continue
-        norms = (df["total_score"] / BKS[inst] * 100.0).tolist()
-        variant_norm[lbl].extend(norms)
-        per_inst_norm[lbl][inst] = np.mean(norms)
-
-    available = [v for v in variants if variant_norm[v]]
-    if not available:
-        print("  WARN  no adaptive data")
-        return
-
-    data   = [variant_norm[v] for v in available]
-    labels = [variant_labels[variants.index(v)] for v in available]
-
-    fig, (ax_box, ax_inst) = plt.subplots(1, 2, figsize=(14, 6),
-                                           gridspec_kw={"width_ratios": [1, 1.4]})
-
-    # ── Left: Boxplot + jitter ─────────────────────────────────────────────────
-    bp_colors = ["#90A4AE", "#42A5F5"]
-    bp = ax_box.boxplot(data, patch_artist=True, labels=labels, widths=0.45,
-                        medianprops=dict(color="black", linewidth=2),
-                        whiskerprops=dict(linewidth=1.2),
-                        capprops=dict(linewidth=1.2),
-                        flierprops=dict(marker="", alpha=0))
-    for patch, color in zip(bp["boxes"], bp_colors[:len(labels)]):
-        patch.set_facecolor(color)
-        patch.set_alpha(0.72)
-
-    # Jitter overlay
-    np.random.seed(42)
-    for i, d in enumerate(data, start=1):
-        jit = np.random.uniform(-0.12, 0.12, len(d))
-        ax_box.scatter(np.full(len(d), i) + jit, d,
-                       alpha=0.45, s=18, color=bp_colors[i - 1],
-                       edgecolors="white", linewidths=0.4, zorder=3)
-
-    # Mean annotations
-    for i, d in enumerate(data, start=1):
-        m = np.mean(d)
-        ax_box.scatter(i, m, marker="^", color="red", s=70, zorder=5)
-        ax_box.annotate(f"Mean\n{m:.2f}%", xy=(i, m),
-                        xytext=(12, 0), textcoords="offset points",
-                        fontsize=8, color="red", va="center")
-
-    ax_box.axhline(100, color="black", linewidth=1.0, linestyle="--", alpha=0.5)
-    ax_box.set_ylabel("Normalized Score (% of BKS)", fontsize=LABEL_SIZE)
-    ax_box.set_title("Overall Distribution\n(All 6 instances, 5 runs each)",
-                     fontsize=SUBTITLE_SIZE, fontweight="bold")
-    all_vals = np.concatenate(data)
-    ax_box.set_ylim(max(93, all_vals.min() - 1.5), 101.8)
-    ax_box.grid(True, alpha=0.25, axis="y", linestyle="--")
-
-    # ── Right: Per-instance grouped bar ───────────────────────────────────────
-    bar_colors = bp_colors
-    x          = np.arange(len(INSTANCES))
-    width      = 0.35
-
-    for j, variant in enumerate(available):
-        vals = [per_inst_norm[variant].get(inst, 0) for inst in INSTANCES]
-        bars = ax_inst.bar(x + j * width, vals, width, label=labels[j],
-                           color=bar_colors[j], alpha=0.85,
-                           edgecolor="white", linewidth=0.5)
-        for bar, val in zip(bars, vals):
-            ax_inst.annotate(f"{val:.1f}%",
-                             xy=(bar.get_x() + bar.get_width() / 2, bar.get_height()),
-                             xytext=(0, 3), textcoords="offset points",
-                             ha="center", fontsize=7.5, color="#333333")
-
-    # Delta arrows
-    if len(available) == 2:
-        for i, inst in enumerate(INSTANCES):
-            v0 = per_inst_norm[available[0]].get(inst, 0)
-            v1 = per_inst_norm[available[1]].get(inst, 0)
-            delta = v1 - v0
-            color = "#4CAF50" if delta >= 0 else "#F44336"
-            sign  = "+" if delta >= 0 else ""
-            mid_x = x[i] + width * 0.5
-            top   = max(v0, v1) + 0.5
-            ax_inst.annotate(f"{sign}{delta:.2f}%",
-                             xy=(mid_x, top), fontsize=7.5,
-                             color=color, ha="center", fontweight="bold")
-
-    ax_inst.axhline(100, color="black", linewidth=1.0, linestyle="--", alpha=0.5)
-    ax_inst.set_xticks(x + width / 2)
-    ax_inst.set_xticklabels(INSTANCES, fontsize=10.5)
-    ax_inst.set_ylabel("Normalized Score (% of BKS)", fontsize=LABEL_SIZE)
-    ax_inst.set_title("Per-Instance Comparison\n(Mean Normalized Score)",
-                      fontsize=SUBTITLE_SIZE, fontweight="bold")
-    ax_inst.set_ylim(max(93, min(per_inst_norm[available[0]].values()) - 1.5), 101.8)
-    ax_inst.legend(fontsize=LEGEND_SIZE, framealpha=0.9)
-    ax_inst.grid(True, alpha=0.25, axis="y", linestyle="--")
-
-    plt.suptitle("Adaptive-Lite vs Static Mutation",
-                 fontsize=TITLE_SIZE, fontweight="bold")
-    plt.tight_layout()
-    _savefig(os.path.join(CHART_DIR, "exp3_adaptive_boxplot.png"))
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  6. Adaptive Operator Curves  (rolling smooth + shaded band)
-# ══════════════════════════════════════════════════════════════════════════════
-def plot_exp3_operator_curves(results_dir: str = "experiments/results/exp3_adaptive_mutation"):
-    """
-    Cải tiến:
-      - Rolling average (window=3) để làm mượt đường
-      - Shaded band ±std cho mỗi operator
-      - Annotate điểm cuối của mỗi đường
-    """
-    pattern   = os.path.join(results_dir, "*_adaptive_lite_2tier.csv")
-    csv_files = sorted(glob.glob(pattern))
-    if not csv_files:
-        print(f"  WARN  no adaptive_lite_2tier data in {results_dir}")
-        return
-
-    rows = []
-    for f in csv_files:
-        df = pd.read_csv(f)
-        if "convergence_log" not in df.columns:
-            continue
-        for _, r in df.iterrows():
-            try:
-                log = json.loads(r["convergence_log"])
-            except Exception:
-                continue
-            for entry in log:
-                if "gen" not in entry:
-                    continue
-                rows.append({
-                    "gen":      entry.get("gen"),
-                    "p_insert": entry.get("p_insert"),
-                    "p_2opt":   entry.get("p_2opt"),
-                    "p_swap":   entry.get("p_swap"),
-                })
-
-    if not rows:
-        print("  WARN  no operator log data")
-        return
-
-    hist_df = pd.DataFrame(rows)
-    grouped = hist_df.groupby("gen", as_index=False).agg(
-        p_insert_mean=("p_insert", "mean"),
-        p_insert_std =("p_insert", "std"),
-        p_2opt_mean  =("p_2opt",   "mean"),
-        p_2opt_std   =("p_2opt",   "std"),
-        p_swap_mean  =("p_swap",   "mean"),
-        p_swap_std   =("p_swap",   "std"),
-    ).fillna(0)
-
-    gens = grouped["gen"].values
-
-    def smooth(arr, w=3):
-        return pd.Series(arr).rolling(w, center=True, min_periods=1).mean().values
-
-    fig, ax = plt.subplots(figsize=(10, 5.5))
-
-    op_configs = [
-        ("p_insert", "Insertion Operator",  PALETTE["red"],    "-"),
-        ("p_2opt",   "2-opt Operator",       PALETTE["blue"],   "-"),
-        ("p_swap",   "Swap Operator",         PALETTE["green"],  "--"),
-    ]
-
-    for col, label, color, ls in op_configs:
-        mean_col = f"{col}_mean"
-        std_col  = f"{col}_std"
-        if mean_col not in grouped.columns:
-            continue
-        y_mean = smooth(grouped[mean_col].values)
-        y_std  = smooth(grouped[std_col].values)
-
-        ax.plot(gens, y_mean, ls, linewidth=LINE_MAIN, color=color, label=label)
-        ax.fill_between(gens,
-                        np.clip(y_mean - y_std, 0, 1),
-                        np.clip(y_mean + y_std, 0, 1),
-                        alpha=0.10, color=color)
-        # Annotate final value
-        ax.annotate(f"{y_mean[-1]:.2f}",
-                    xy=(gens[-1], y_mean[-1]),
-                    xytext=(4, 0), textcoords="offset points",
-                    fontsize=8, color=color, va="center", fontweight="bold")
-
-    ax.set_xlabel("Generation", fontsize=LABEL_SIZE)
-    ax.set_ylabel("Operator Selection Probability", fontsize=LABEL_SIZE)
-    ax.set_title("Adaptive Mutation — Operator Probability Over Generations\n"
-                 "(Mean ± Std across all runs & instances)",
-                 fontsize=SUBTITLE_SIZE, fontweight="bold")
-    ax.set_ylim(0, 1.05)
-    ax.set_xlim(left=0)
-    ax.legend(fontsize=LEGEND_SIZE, framealpha=0.9)
-    ax.grid(True, alpha=0.25, linestyle="--")
-    plt.tight_layout()
-    _savefig(os.path.join(CHART_DIR, "exp3_operator_curves.png"))
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -980,7 +595,7 @@ def plot_exp3_budget_bars(
     ax2.legend(lines1 + lines2, labels1 + labels2,
                fontsize=LEGEND_SIZE, loc="upper left", framealpha=0.9)
 
-    fig.suptitle("Impact of Budget Constraints — Instance RC201",
+    fig.suptitle("Impact of Budget constraints - Instance RC201",
                  fontsize=TITLE_SIZE, fontweight="bold", y=1.02)
     plt.tight_layout()
     out = os.path.join(CHART_DIR, "exp3_budget_impact.png")
@@ -1046,7 +661,7 @@ def plot_exp4_ablation_convergence(
 
     ax.set_xlabel("Generation", fontsize=LABEL_SIZE)
     ax.set_ylabel("Normalized Best Score (% BKS)", fontsize=LABEL_SIZE)
-    ax.set_title("Ablation Study — Convergence Comparison",
+    ax.set_title("Ablation study - Convergence comparison",
                  fontsize=TITLE_SIZE, fontweight="bold", pad=12)
 
     # Đường tham chiếu 100% BKS
