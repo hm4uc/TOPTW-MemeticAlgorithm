@@ -1,0 +1,4 @@
+Budget_Tier,Score_Avg,Score_Std,POIs_Avg,Cost_Avg,Rows,cat_history_culture,cat_nature_parks,cat_food_drink,cat_shopping,cat_entertainment
+backpacker_200k,599.52,10.64,23.9,195500.0,20,4.1,17.25,0.55,1.55,0.45
+luxury_unlimited,901.91,30.69,31.05,3195500.0,20,9.25,8.3,7.15,0.0,6.35
+standard_500k,714.41,22.81,26.35,493000.0,20,4.9,16.0,2.1,1.15,2.2

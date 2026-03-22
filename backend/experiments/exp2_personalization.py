@@ -2,7 +2,7 @@
 Thí nghiệm 2: Đánh giá Giá trị Cá nhân hóa (Personalization Value).
 
 ★ CHIẾN LƯỢC ★
-  • Chạy trên C101 (Narrow TW — consistent with exp1/exp3/exp4)
+  • Chạy trên RC201 (Mixed TW — nhiều POI, đa dạng)
   • Budget nới rộng (2_000_000) → isolate preference from financial constraints
   • 5 profiles: baseline, history_buff, foodie, explorer, shopper
   • 10 runs per profile
@@ -25,7 +25,7 @@ from app.models.requests import UserPreferences
 # ══════════════════════════════════════════════════════════════════════════════
 #  Cấu hình
 # ══════════════════════════════════════════════════════════════════════════════
-INSTANCE = "C101"
+INSTANCE = "RC201"
 NUM_RUNS = 10
 OUTPUT_DIR = "experiments/results/exp2_personalization"
 

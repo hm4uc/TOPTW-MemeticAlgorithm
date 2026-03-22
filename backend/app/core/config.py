@@ -38,7 +38,7 @@ IMPROVEMENT_THRESHOLD:     float = 1e-4
 #    - Insert fail cao -> giảm insert, dồn sang 2-opt
 # =============================================================================
 
-USE_ADAPTIVE_MUTATION_DEFAULT: bool = False
+USE_ADAPTIVE_MUTATION_DEFAULT: bool = True
 ADAPTIVE_INSERT_START: float = 0.45
 ADAPTIVE_INSERT_END: float = 0.15
 ADAPTIVE_2OPT_START: float = 0.25

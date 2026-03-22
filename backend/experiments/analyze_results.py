@@ -143,66 +143,121 @@ def analyze_exp2_personalization() -> pd.DataFrame:
     return summary_df
 
 
-def analyze_exp3_ablation() -> pd.DataFrame:
+def analyze_exp3_budget_impact() -> pd.DataFrame:
     print("\n" + "=" * 100)
-    print("  THÍ NGHIỆM 3: ABLATION STUDY")
+    print("  THÍ NGHIỆM 3: TÁC ĐỘNG NGÂN SÁCH")
     print("=" * 100)
 
-    exp_dir = RESULTS_DIR / "exp3_ablation"
-    grouped: DefaultDict[str, list[tuple[str, pd.DataFrame]]] = defaultdict(list)
+    exp_dir = RESULTS_DIR / "exp3_budget_impact"
+    budget_tiers = {"backpacker_200k", "standard_500k", "luxury_unlimited"}
+    cat_cols = [
+        "cat_history_culture", "cat_nature_parks", "cat_food_drink",
+        "cat_shopping", "cat_entertainment",
+    ]
+    grouped: DefaultDict[str, list[pd.DataFrame]] = defaultdict(list)
 
     for csv_path in sorted(exp_dir.glob("*.csv")):
-        inst = _instance_from_stem(csv_path.stem)
+        stem = csv_path.stem
+        inst = _instance_from_stem(stem)
         if not inst:
             continue
-        variant = csv_path.stem.split("_", 1)[1]
+        tier = stem.split("_", 1)[1]
+        if tier not in budget_tiers:
+            continue
         df = _safe_read_csv(csv_path)
         if df is not None and not df.empty:
-            grouped[variant].append((inst, df))
+            grouped[tier].append(df)
 
     rows = []
-    for variant, items in sorted(grouped.items()):
-        norm_scores = []
-        wait_vals = []
-        time_vals = []
-        gen_vals = []
-
-        for inst, df in items:
-            bks = LABADIE_BKS[inst]
-            norm_scores.extend((df["total_score"] / bks * 100.0).tolist())
-            if "total_wait" in df.columns:
-                wait_vals.extend(df["total_wait"].tolist())
-            time_vals.extend(df["execution_time"].tolist())
-            gen_vals.extend(df["generations_run"].tolist())
-
-        rows.append({
-            "Variant": variant,
-            "Norm_Score%": round(float(pd.Series(norm_scores).mean()), 2),
-            "Norm_Std": round(float(pd.Series(norm_scores).std()), 2),
-            "Wait_Avg": round(float(pd.Series(wait_vals).mean()) if wait_vals else 0.0, 2),
-            "Time(s)": round(float(pd.Series(time_vals).mean()), 3),
-            "Gens_Avg": round(float(pd.Series(gen_vals).mean()), 2),
-            "Rows": len(norm_scores),
-        })
+    for tier in sorted(grouped.keys()):
+        merged = cast(pd.DataFrame, pd.concat(grouped[tier], ignore_index=True))
+        row = {
+            "Budget_Tier": tier,
+            "Score_Avg": round(float(merged["total_score"].mean()), 2),
+            "Score_Std": round(float(merged["total_score"].std()), 2),
+            "POIs_Avg": round(float(merged["num_pois"].mean()), 2),
+            "Cost_Avg": round(float(merged["total_cost"].mean()), 2),
+            "Rows": len(merged),
+        }
+        for col in cat_cols:
+            row[col] = round(float(merged[col].mean()), 2) if col in merged.columns else 0.0
+        rows.append(row)
 
     summary_df = pd.DataFrame(rows)
-    if not summary_df.empty and "full_hga" in summary_df["Variant"].values:
-        full_row = summary_df[summary_df["Variant"] == "full_hga"]
-        base = float(full_row["Norm_Score%"].to_numpy()[0])
-        summary_df["Diff%_vs_full_hga"] = summary_df["Norm_Score%"].apply(lambda v: round(v - base, 2))
-
-    out_path = SUMMARY_DIR / "exp3_ablation_summary.csv"
+    out_path = SUMMARY_DIR / "exp3_budget_impact_summary.csv"
     summary_df.to_csv(out_path, index=False)
     print(f"  📄 Saved: {out_path}")
     return summary_df
 
 
-def analyze_exp4_sensitivity() -> pd.DataFrame:
+def analyze_exp4_ablation_repair() -> pd.DataFrame:
     print("\n" + "=" * 100)
-    print("  THÍ NGHIỆM 4: SENSITIVITY ANALYSIS")
+    print("  THÍ NGHIỆM 4: ABLATION STUDY — SMART REPAIR & LOCAL SEARCH")
     print("=" * 100)
 
-    exp_dir = RESULTS_DIR / "exp4_sensitivity"
+    exp_dir = RESULTS_DIR / "exp4_ablation_repair"
+    variants = {"full_hga", "no_smart_repair", "no_local_search"}
+    grouped: DefaultDict[str, list[tuple[str, pd.DataFrame]]] = defaultdict(list)
+
+    for csv_path in sorted(exp_dir.glob("*.csv")):
+        stem = csv_path.stem
+        inst = _instance_from_stem(stem)
+        if not inst:
+            continue
+        variant = stem.split("_", 1)[1]
+        if variant not in variants:
+            continue
+        df = _safe_read_csv(csv_path)
+        if df is not None and not df.empty:
+            grouped[variant].append((inst, df))
+
+    rows = []
+    baseline_norm = None
+    for variant in ["full_hga", "no_smart_repair", "no_local_search"]:
+        if variant not in grouped:
+            continue
+        norm_scores = []
+        time_vals = []
+        gen_vals = []
+
+        for inst, df in grouped[variant]:
+            bks = LABADIE_BKS[inst]
+            norm_scores.extend((df["total_score"] / bks * 100.0).tolist())
+            time_vals.extend(df["execution_time"].tolist())
+            gen_vals.extend(df["generations_run"].tolist())
+
+        avg_norm = float(pd.Series(norm_scores).mean())
+        if variant == "full_hga":
+            baseline_norm = avg_norm
+            diff_str = "baseline"
+        elif baseline_norm is not None:
+            diff_str = f"{avg_norm - baseline_norm:+.2f}%"
+        else:
+            diff_str = "N/A"
+
+        rows.append({
+            "Variant": variant,
+            "Norm_Score%": round(avg_norm, 2),
+            "Norm_Std": round(float(pd.Series(norm_scores).std()), 2),
+            "Time(s)": round(float(pd.Series(time_vals).mean()), 3),
+            "Gens_Avg": round(float(pd.Series(gen_vals).mean()), 2),
+            "Diff%": diff_str,
+            "Rows": len(norm_scores),
+        })
+
+    summary_df = pd.DataFrame(rows)
+    out_path = SUMMARY_DIR / "exp4_ablation_repair_summary.csv"
+    summary_df.to_csv(out_path, index=False)
+    print(f"  📄 Saved: {out_path}")
+    return summary_df
+
+
+def analyze_exp5_sensitivity() -> pd.DataFrame:
+    print("\n" + "=" * 100)
+    print("  THÍ NGHIỆM 5: SENSITIVITY ANALYSIS")
+    print("=" * 100)
+
+    exp_dir = RESULTS_DIR / "exp5_sensitivity"
     grouped: DefaultDict[tuple[str, str], list[tuple[str, pd.DataFrame]]] = defaultdict(list)
 
     for csv_path in sorted(exp_dir.glob("*.csv")):
@@ -257,66 +312,13 @@ def analyze_exp4_sensitivity() -> pd.DataFrame:
         rows.append(row)
 
     summary_df = pd.DataFrame(rows)
-    out_path = SUMMARY_DIR / "exp4_sensitivity_summary.csv"
+    out_path = SUMMARY_DIR / "exp5_sensitivity_summary.csv"
     summary_df.to_csv(out_path, index=False)
     print(f"  📄 Saved: {out_path}")
     return summary_df
 
 
-def analyze_exp5_adaptive_mutation() -> pd.DataFrame:
-    print("\n" + "=" * 100)
-    print("  THÍ NGHIỆM 5: ADAPTIVE-LITE MUTATION")
-    print("=" * 100)
 
-    exp_dir = RESULTS_DIR / "exp5_adaptive_mutation"
-    variants = {"static_mutation", "adaptive_lite_2tier"}
-    grouped: DefaultDict[str, list[tuple[str, pd.DataFrame]]] = defaultdict(list)
-
-    for csv_path in sorted(exp_dir.glob("*.csv")):
-        stem = csv_path.stem
-        inst = _instance_from_stem(stem)
-        if not inst:
-            continue
-        variant = stem.split("_", 1)[1]
-        if variant not in variants:
-            continue
-        df = _safe_read_csv(csv_path)
-        if df is not None and not df.empty:
-            grouped[variant].append((inst, df))
-
-    rows = []
-    for variant in sorted(grouped.keys()):
-        norm_scores = []
-        wait_vals = []
-        time_vals = []
-        gen_vals = []
-
-        for inst, df in grouped[variant]:
-            bks = LABADIE_BKS[inst]
-            norm_scores.extend((df["total_score"] / bks * 100.0).tolist())
-            wait_vals.extend(df["total_wait"].tolist())
-            time_vals.extend(df["execution_time"].tolist())
-            gen_vals.extend(df["generations_run"].tolist())
-
-        rows.append({
-            "Variant": variant,
-            "Norm_Score%": round(float(pd.Series(norm_scores).mean()), 2),
-            "Norm_Std": round(float(pd.Series(norm_scores).std()), 2),
-            "Wait_Avg": round(float(pd.Series(wait_vals).mean()), 2),
-            "Time(s)": round(float(pd.Series(time_vals).mean()), 3),
-            "Gens_Avg": round(float(pd.Series(gen_vals).mean()), 2),
-            "Rows": len(norm_scores),
-        })
-
-    summary_df = pd.DataFrame(rows)
-    if not summary_df.empty and "static_mutation" in summary_df["Variant"].values:
-        base = float(summary_df[summary_df["Variant"] == "static_mutation"]["Norm_Score%"].to_numpy()[0])
-        summary_df["Diff%_vs_static"] = summary_df["Norm_Score%"].apply(lambda v: round(v - base, 2))
-
-    out_path = SUMMARY_DIR / "exp5_adaptive_mutation_summary.csv"
-    summary_df.to_csv(out_path, index=False)
-    print(f"  📄 Saved: {out_path}")
-    return summary_df
 
 
 def main():
@@ -326,9 +328,9 @@ def main():
 
     analyze_exp1_benchmark()
     analyze_exp2_personalization()
-    analyze_exp3_ablation()
-    analyze_exp4_sensitivity()
-    analyze_exp5_adaptive_mutation()
+    analyze_exp3_budget_impact()
+    analyze_exp4_ablation_repair()
+    analyze_exp5_sensitivity()
 
     print(f"\n{'=' * 90}")
     print(f"  ✅ Đã lưu toàn bộ summary vào: {SUMMARY_DIR}")

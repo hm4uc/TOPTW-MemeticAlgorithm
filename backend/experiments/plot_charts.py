@@ -157,9 +157,7 @@ def plot_convergence(csv_path: str, output_name: str = "convergence"):
     _savefig(os.path.join(CHART_DIR, f"{output_name}.png"))
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-#  2. Ablation Study  (Two-panel: per-instance grouped bar + delta heatmap)
-# ══════════════════════════════════════════════════════════════════════════════
+# (Ablation study chart removed — replaced by Adaptive Mutation in exp3)
 def plot_ablation_boxplot(results_dir: str = "experiments/results/exp3_ablation"):
     """
     Redesigned ablation chart — hai panel riêng biệt để tránh noise khi pool instances:
@@ -327,7 +325,7 @@ def plot_ablation_boxplot(results_dir: str = "experiments/results/exp3_ablation"
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  3. Route Scatter Plot  (colored by POI category)
+#  2. Route Scatter Plot  (colored by POI category)
 # ══════════════════════════════════════════════════════════════════════════════
 def plot_route_comparison(results_dir: str = "experiments/results/exp2_personalization"):
     """
@@ -433,7 +431,7 @@ def plot_route_comparison(results_dir: str = "experiments/results/exp2_personali
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  4. Personalization Bar Chart  (merged C101+C201, better layout)
+#  3. Personalization Bar Chart  (merged C101+C201, better layout)
 # ══════════════════════════════════════════════════════════════════════════════
 def plot_personalization_bars(results_dir: str = "experiments/results/exp2_personalization"):
     """
@@ -452,10 +450,10 @@ def plot_personalization_bars(results_dir: str = "experiments/results/exp2_perso
     profiles = list(PROFILE_LABELS.keys())
     colors   = [CAT_COLORS[c] for c in CAT_ORDER]
 
-    # Load data — prefer C201 (richer distribution) for visualization
+    # Load data — prefer RC201 (richer distribution) for visualization
     data = {}
     for name in profiles:
-        for inst in ["C201", "C101"]:
+        for inst in ["RC201", "C201", "C101"]:
             csv_path = os.path.join(results_dir, f"{inst}_{name}.csv")
             if os.path.exists(csv_path):
                 df = pd.read_csv(csv_path)
@@ -535,9 +533,9 @@ def plot_personalization_bars(results_dir: str = "experiments/results/exp2_perso
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  5. Sensitivity Analysis  (dual-axis, std band, default marker)
+#  4. Sensitivity Analysis  (dual-axis, std band, default marker)
 # ══════════════════════════════════════════════════════════════════════════════
-def plot_sensitivity(results_dir: str = "experiments/results/exp4_sensitivity"):
+def plot_sensitivity(results_dir: str = "experiments/results/exp5_sensitivity"):
     """
     Cải tiến:
       - Vùng ±1 std được tô nhạt dưới đường Score
@@ -670,9 +668,9 @@ def plot_sensitivity(results_dir: str = "experiments/results/exp4_sensitivity"):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  6. Adaptive Boxplot  (swarm-like jitter + per-instance delta table)
+#  5. Adaptive Boxplot  (swarm-like jitter + per-instance delta table)
 # ══════════════════════════════════════════════════════════════════════════════
-def plot_exp5_boxplot(results_dir: str = "experiments/results/exp5_adaptive_mutation"):
+def plot_exp3_boxplot(results_dir: str = "experiments/results/exp3_adaptive_mutation"):
     """
     Cải tiến:
       - Jittered dots overlay để thấy individual data points
@@ -789,13 +787,13 @@ def plot_exp5_boxplot(results_dir: str = "experiments/results/exp5_adaptive_muta
     plt.suptitle("Adaptive-Lite vs Static Mutation",
                  fontsize=TITLE_SIZE, fontweight="bold")
     plt.tight_layout()
-    _savefig(os.path.join(CHART_DIR, "exp5_adaptive_boxplot.png"))
+    _savefig(os.path.join(CHART_DIR, "exp3_adaptive_boxplot.png"))
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  7. Adaptive Operator Curves  (rolling smooth + shaded band)
+#  6. Adaptive Operator Curves  (rolling smooth + shaded band)
 # ══════════════════════════════════════════════════════════════════════════════
-def plot_exp5_operator_curves(results_dir: str = "experiments/results/exp5_adaptive_mutation"):
+def plot_exp3_operator_curves(results_dir: str = "experiments/results/exp3_adaptive_mutation"):
     """
     Cải tiến:
       - Rolling average (window=3) để làm mượt đường
@@ -884,11 +882,190 @@ def plot_exp5_operator_curves(results_dir: str = "experiments/results/exp5_adapt
     ax.legend(fontsize=LEGEND_SIZE, framealpha=0.9)
     ax.grid(True, alpha=0.25, linestyle="--")
     plt.tight_layout()
-    _savefig(os.path.join(CHART_DIR, "exp5_operator_curves.png"))
+    _savefig(os.path.join(CHART_DIR, "exp3_operator_curves.png"))
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  Main
+#  5b. Budget Impact — Category Distribution & Score (Exp3)
+# ══════════════════════════════════════════════════════════════════════════════
+def plot_exp3_budget_bars(
+    summary_csv: str = "experiments/results/summary/exp3_budget_impact.csv",
+):
+    """
+    Vẽ 2-panel chart:
+      Left:  Stacked bar chart — Category Distribution (%) per budget tier
+      Right: Score + POIs comparison bar chart
+    """
+    if not os.path.exists(summary_csv):
+        print(f"  SKIP  {summary_csv} not found")
+        return
+
+    df = pd.read_csv(summary_csv)
+
+    # Sắp xếp theo budget tăng dần
+    tier_order = ["backpacker_200k", "standard_500k", "luxury_unlimited"]
+    tier_labels = ["Backpacker\n(200K)", "Standard\n(500K)", "Luxury\n(Unlimited)"]
+    df["sort_key"] = df["Budget_Tier"].map({t: i for i, t in enumerate(tier_order)})
+    df = df.sort_values("sort_key").reset_index(drop=True)
+
+    cat_pct_cols = ["Cat_Hist%", "Cat_Nat%", "Cat_Food%", "Cat_Shop%", "Cat_Ent%"]
+    cat_labels = ["History", "Nature", "Food", "Shopping", "Entertainment"]
+    cat_colors = ["#4169E1", "#228B22", "#FF6347", "#DAA520", "#9370DB"]
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6), gridspec_kw={"width_ratios": [3, 2]})
+
+    # ── LEFT: Stacked Bar — Category Distribution ────────────────────────
+    x = np.arange(len(df))
+    bar_width = 0.55
+    bottom = np.zeros(len(df))
+
+    for i, (col, label, color) in enumerate(zip(cat_pct_cols, cat_labels, cat_colors)):
+        vals = df[col].values
+        bars = ax1.bar(x, vals, bar_width, bottom=bottom, label=label,
+                       color=color, edgecolor="white", linewidth=0.5)
+        # Annotate % nếu > 5%
+        for j, v in enumerate(vals):
+            if v > 5:
+                ax1.text(x[j], bottom[j] + v / 2, f"{v:.0f}%",
+                         ha="center", va="center", fontsize=ANNOT_SIZE,
+                         fontweight="bold", color="white")
+        bottom += vals
+
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(tier_labels, fontsize=LABEL_SIZE)
+    ax1.set_ylabel("Category Distribution (%)", fontsize=LABEL_SIZE)
+    ax1.set_title("POI Category Distribution by Budget",
+                   fontsize=SUBTITLE_SIZE, fontweight="bold")
+    ax1.legend(fontsize=LEGEND_SIZE, loc="upper right", ncol=2,
+               framealpha=0.9, edgecolor="#CCCCCC")
+    ax1.set_ylim(0, 105)
+
+    # ── RIGHT: Score & POIs Grouped Bar ──────────────────────────────────
+    x2 = np.arange(len(df))
+    w = 0.3
+
+    color_score = PALETTE["blue"]
+    color_pois = PALETTE["teal"]
+
+    bars1 = ax2.bar(x2 - w/2, df["Score_Avg"].values, w, label="Score",
+                    color=color_score, edgecolor="white", linewidth=0.5)
+    ax2.set_ylabel("Total Score", fontsize=LABEL_SIZE, color=color_score)
+
+    # Annotate score
+    for bar, val in zip(bars1, df["Score_Avg"].values):
+        ax2.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 10,
+                 f"{val:.0f}", ha="center", va="bottom",
+                 fontsize=ANNOT_SIZE + 1, fontweight="bold", color=color_score)
+
+    # Second axis for POIs
+    ax2b = ax2.twinx()
+    bars2 = ax2b.bar(x2 + w/2, df["POIs_Avg"].values, w, label="POIs",
+                     color=color_pois, edgecolor="white", linewidth=0.5, alpha=0.85)
+    ax2b.set_ylabel("Number of POIs in Route", fontsize=LABEL_SIZE, color=color_pois)
+
+    # Annotate POIs
+    for bar, val in zip(bars2, df["POIs_Avg"].values):
+        ax2b.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.3,
+                  f"{val:.1f}", ha="center", va="bottom",
+                  fontsize=ANNOT_SIZE + 1, fontweight="bold", color=color_pois)
+
+    ax2.set_xticks(x2)
+    ax2.set_xticklabels(tier_labels, fontsize=LABEL_SIZE)
+    ax2.set_title("Score & POIs by Budget",
+                   fontsize=SUBTITLE_SIZE, fontweight="bold")
+
+    # Combined legend
+    lines1, labels1 = ax2.get_legend_handles_labels()
+    lines2, labels2 = ax2b.get_legend_handles_labels()
+    ax2.legend(lines1 + lines2, labels1 + labels2,
+               fontsize=LEGEND_SIZE, loc="upper left", framealpha=0.9)
+
+    fig.suptitle("Impact of Budget Constraints — Instance RC201",
+                 fontsize=TITLE_SIZE, fontweight="bold", y=1.02)
+    plt.tight_layout()
+    out = os.path.join(CHART_DIR, "exp3_budget_impact.png")
+    _savefig(out)
+
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  5. Ablation Study — Convergence Comparison (Exp4)
+# ══════════════════════════════════════════════════════════════════════════════
+def plot_exp4_ablation_convergence(
+    conv_csv: str = "experiments/results/exp4_ablation_repair/convergence_comparison.csv",
+):
+    """
+    Vẽ đường cong hội tụ so sánh 3 ablation variants.
+    Trục X = Generation, trục Y = Normalized Best Score (% BKS).
+    Band ±1σ cho mỗi variant.
+    """
+    if not os.path.exists(conv_csv):
+        print(f"  SKIP  {conv_csv} not found")
+        return
+
+    df = pd.read_csv(conv_csv)
+
+    variant_style = {
+        "full_hga":         {"color": PALETTE["green"],  "label": "Full HGA",         "ls": "-"},
+        "no_smart_repair":  {"color": PALETTE["orange"], "label": "No Smart Repair",  "ls": "--"},
+        "no_local_search":  {"color": PALETTE["red"],    "label": "No Local Search",  "ls": "-."},
+    }
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Chỉ vẽ đến gen mà N_Runs >= 5 (đủ tin cậy)
+    min_runs = 5
+
+    for variant, style in variant_style.items():
+        vdf = df[(df["Variant"] == variant) & (df["N_Runs"] >= min_runs)].copy()
+        if vdf.empty:
+            continue
+
+        gens = vdf["Generation"].values
+        means = vdf["Norm_Best_Mean"].values
+        stds = vdf["Norm_Best_Std"].fillna(0).values
+
+        # Đường chính
+        ax.plot(gens, means,
+                color=style["color"], linestyle=style["ls"],
+                linewidth=LINE_MAIN, label=style["label"], zorder=3)
+
+        # Band ±1σ
+        ax.fill_between(gens, means - stds, means + stds,
+                        color=style["color"], alpha=0.12, zorder=1)
+
+        # Annotate final value
+        final_gen = gens[-1]
+        final_val = means[-1]
+        ax.annotate(f"{final_val:.1f}%",
+                    xy=(final_gen, final_val),
+                    xytext=(8, 0), textcoords="offset points",
+                    fontsize=ANNOT_SIZE + 1, fontweight="bold",
+                    color=style["color"],
+                    va="center")
+
+    ax.set_xlabel("Generation", fontsize=LABEL_SIZE)
+    ax.set_ylabel("Normalized Best Score (% BKS)", fontsize=LABEL_SIZE)
+    ax.set_title("Ablation Study — Convergence Comparison",
+                 fontsize=TITLE_SIZE, fontweight="bold", pad=12)
+
+    # Đường tham chiếu 100% BKS
+    ax.axhline(y=100, color="#999999", linestyle=":", linewidth=1, alpha=0.6)
+    ax.text(1, 100.3, "BKS (100%)", fontsize=ANNOT_SIZE, color="#999999")
+
+    ax.legend(fontsize=LEGEND_SIZE + 1, loc="lower right",
+              framealpha=0.9, edgecolor="#CCCCCC")
+    ax.set_xlim(left=1)
+    ax.set_ylim(bottom=82, top=102)
+    ax.grid(axis="y", alpha=0.3, linestyle="--")
+
+    plt.tight_layout()
+    out = os.path.join(CHART_DIR, "exp4_ablation_convergence.png")
+    _savefig(out)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  MAIN
 # ══════════════════════════════════════════════════════════════════════════════
 def main():
     print("=" * 62)
@@ -902,23 +1079,20 @@ def main():
             inst = os.path.basename(f).replace("_fixed.csv", "")
             plot_convergence(f, f"convergence_{inst}")
 
-    print("\n[2] Ablation Boxplot ...")
-    plot_ablation_boxplot()
-
-    print("\n[3] Route Comparison (Foodie vs History Buff) ...")
+    print("\n[2] Route Comparison (Foodie vs History Buff) ...")
     plot_route_comparison()
 
-    print("\n[4] Personalization Category Distribution ...")
+    print("\n[3] Personalization Category Distribution ...")
     plot_personalization_bars()
 
-    print("\n[5] Sensitivity Analysis ...")
+    print("\n[4] Sensitivity Analysis ...")
     plot_sensitivity()
 
-    print("\n[6] Adaptive vs Static Mutation Boxplot ...")
-    plot_exp5_boxplot()
+    print("\n[5] Budget Impact (Exp3) ...")
+    plot_exp3_budget_bars()
 
-    print("\n[7] Adaptive Operator Probability Curves ...")
-    plot_exp5_operator_curves()
+    print("\n[6] Ablation Convergence Comparison ...")
+    plot_exp4_ablation_convergence()
 
     print(f"\n{'=' * 62}")
     print(f"  All charts saved to: {CHART_DIR}")
@@ -927,3 +1101,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

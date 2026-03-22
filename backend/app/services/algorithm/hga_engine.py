@@ -72,6 +72,7 @@ class HybridGeneticAlgorithm:
         instance_name: str = "C101",
         # ── Ablation Flags ──────────────────────────────────────────
         use_smart_repair: bool = True,        # False → Simple Repair (xóa cuối)
+        use_local_search: bool = True,        # False → tắt Repair+Refill hoàn toàn
         use_insertion_mutation: bool = True,   # False → chỉ 2-opt + Swap
         use_wait_penalty: bool = True,         # False → PENALTY_WAIT = 0
         use_heuristic_init: bool = True,       # False → 100% Random Init
@@ -96,6 +97,7 @@ class HybridGeneticAlgorithm:
 
         # ── Ablation Flags ───────────────────────────────────────────────────
         self.use_smart_repair = use_smart_repair
+        self.use_local_search = use_local_search
         self.use_insertion_mutation = use_insertion_mutation
         self.use_wait_penalty = use_wait_penalty
         self.use_heuristic_init = use_heuristic_init
@@ -249,8 +251,9 @@ class HybridGeneticAlgorithm:
         )
         # ★ Repair + Greedy Refill cho MỖI cá thể khởi tạo
         for i, ind in enumerate(self.population):
-            ind = repair(ind, self.user_prefs, self.use_smart_repair)
-            ind = greedy_refill(ind, self.pois, self.user_prefs)
+            if self.use_local_search:
+                ind = repair(ind, self.user_prefs, self.use_smart_repair)
+                ind = greedy_refill(ind, self.pois, self.user_prefs)
             calculate_fitness(ind, self.user_prefs, self.wait_penalty_weight)
             self.population[i] = ind
         self.population.sort(key=lambda ind: ind.fitness, reverse=True)
@@ -311,8 +314,9 @@ class HybridGeneticAlgorithm:
           3. Greedy Refill để lấp đầy route → chất lượng cao hơn nhiều
         """
         ind = _create_random_individual(self.pois, self.depot, self.user_prefs)
-        ind = repair(ind, self.user_prefs, self.use_smart_repair)
-        ind = greedy_refill(ind, self.pois, self.user_prefs)
+        if self.use_local_search:
+            ind = repair(ind, self.user_prefs, self.use_smart_repair)
+            ind = greedy_refill(ind, self.pois, self.user_prefs)
         calculate_fitness(ind, self.user_prefs, self.wait_penalty_weight)
         return ind
 
@@ -371,8 +375,9 @@ class HybridGeneticAlgorithm:
                     if op_success:
                         insertion_success += 1
 
-                child = repair(child, self.user_prefs, self.use_smart_repair)
-                child = greedy_refill(child, self.pois, self.user_prefs)
+                if self.use_local_search:
+                    child = repair(child, self.user_prefs, self.use_smart_repair)
+                    child = greedy_refill(child, self.pois, self.user_prefs)
                 calculate_fitness(child, self.user_prefs, self.wait_penalty_weight)
                 children.append(child)
 
