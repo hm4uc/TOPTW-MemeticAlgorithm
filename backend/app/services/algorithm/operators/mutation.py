@@ -4,15 +4,6 @@ Mutation Operators — 2-opt, Swap, Insertion Mutation (Depot-Safe).
 Nguyên tắc "Depot-Safe":
   Toán tử CHỈ thao tác trên "interior" = route[1:-1].
   Depot được gắn lại sau khi xử lý xong.
-
-Chiến lược mặc định (use_insertion_mutation=True):
-  • 2-opt     (30%) : đảo ngược đoạn con → giảm quãng đường.
-  • Swap      (30%) : hoán đổi 2 POI → thay đổi thứ tự.
-  • Insertion (40%) : tìm POI mới chưa đi, chèn vào vị trí tốt nhất.
-
-Chiến lược ablation (use_insertion_mutation=False):
-  • 2-opt     (50%)
-  • Swap      (50%)
 """
 
 import random
@@ -34,7 +25,7 @@ def mutate(
     collect_stats: bool = False,
 ) -> Individual | tuple[Individual, str, bool]:
     """
-    Áp dụng đột biến ngẫu nhiên cho một cá thể (Depot-Safe).
+    Áp dụng đột biến cho một cá thể (Depot-Safe).
 
     Parameters
     ----------
@@ -49,11 +40,12 @@ def mutate(
     mutation_rate : float
         Xác suất áp dụng đột biến (0.0 → 1.0).
     use_insertion_mutation : bool
-        True  → 2-opt(30%) / Swap(30%) / Insertion(40%).
-        False → chỉ 2-opt(50%) + Swap(50%)  [ablation mode].
+        True  → cho phép dùng insertion.
+        False → tắt insertion (ablation mode).
     operator_probs : dict, optional
         Xác suất toán tử động, dạng {"2opt": x, "swap": y, "insertion": z}.
-        Nếu None -> dùng tỷ lệ mặc định như cũ.
+        Nếu có truyền -> ưu tiên dùng trực tiếp (engine adaptive theo generation).
+        Nếu None -> fallback mặc định (30/30/40 hoặc 50/50 khi tắt insertion).
     collect_stats : bool
         True -> trả thêm (op_name, op_success) cho engine theo dõi telemetry.
 
@@ -98,11 +90,12 @@ def _resolve_operator_probs(
     operator_probs: dict[str, float] | None,
     use_insertion_mutation: bool,
 ) -> dict[str, float]:
-    """Chuẩn hóa xác suất toán tử để tổng = 1.0."""
+    """Chốt xác suất toán tử cuối cùng và chuẩn hóa để tổng = 1.0."""
     if not use_insertion_mutation:
         return {"2opt": 0.5, "swap": 0.5, "insertion": 0.0}
 
     if operator_probs is None:
+        # Fallback tĩnh chỉ để tương thích; luồng chuẩn sẽ truyền probs từ engine.
         return {"2opt": 0.3, "swap": 0.3, "insertion": 0.4}
 
     p2 = max(0.0, float(operator_probs.get("2opt", 0.3)))
@@ -127,13 +120,14 @@ def _insertion_mutation(
     user_prefs: UserPreferences,
 ) -> tuple[Individual, bool]:
     """
-    ★ INSERTION MUTATION — Toán tử cốt lõi để phá Hội tụ sớm ★
+    ★ INSERTION MUTATION — Toán tử mở rộng route ★
 
-    Tìm POI chưa ghé thăm, chèn vào vị trí tốn ít thời gian nhất.
-    Duyệt TOÀN BỘ POI chưa thăm để không bỏ sót ứng viên tốt.
+    Tìm POI chưa ghé thăm, thử chèn theo thứ tự tăng dần cost_increase.
+    Không chỉ thử 1 vị trí "best" duy nhất: nếu vị trí tốt nhất vi phạm constraint,
+    vẫn thử các vị trí kế tiếp để tránh bỏ phí candidate.
 
-    Ưu tiên POI theo score × interest_weight (cao → thử trước).
-    Có xáo trộn ngẫu nhiên trước khi sort để giữ đa dạng quần thể.
+    Ưu tiên candidate theo score × interest_weight (cao -> thử trước).
+    Có shuffle trước sort để break-tie, giúp tăng đa dạng giữa các run.
     """
     route = list(individual.route)
     visited_ids = {p.id for p in route}
@@ -142,7 +136,7 @@ def _insertion_mutation(
     if not unvisited:
         return individual, False
 
-    # Sắp xếp theo score cá nhân hóa, xen kẽ random để giữ đa dạng
+    # Score cá nhân hóa + break-tie bằng random để tránh thiên vị thứ tự cố định.
     weights = user_prefs.interest_weights
     random.shuffle(unvisited)
     unvisited.sort(

@@ -1,5 +1,6 @@
 import math
-from typing import List, Optional
+from types import NoneType
+from typing import List, Optional, Any
 
 from app.models.domain import POI
 from app.models.requests import UserPreferences
@@ -68,7 +69,7 @@ def build_distance_matrix(pois: List[POI]) -> list[list[float]]:
     return matrix
 
 
-def get_travel_time(p1: POI, p2: POI) -> float:
+def get_travel_time(p1: POI, p2: POI) -> float | type[None[Any]]:
     """
     Travel time between two POIs.
     For Solomon benchmarks, travel time == Euclidean distance

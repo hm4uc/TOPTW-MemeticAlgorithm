@@ -53,16 +53,7 @@ ADAPTIVE_MIN_PROB: float = 0.10
 ADAPTIVE_MAX_PROB: float = 0.80
 
 # =============================================================================
-#  PENALTY COEFFICIENTS  (Bảng hệ số phạt)
-#
-#  ┌─────────────────────────┬────────────┬──────────────────────────────────┐
-#  │ Loại phạt               │  Hệ số     │  Mục đích                        │
-#  ├─────────────────────────┼────────────┼──────────────────────────────────┤
-#  │ Trễ giờ (> close_time)  │  100.0     │  Vi phạm ràng buộc CỨNG          │
-#  │ Về depot trễ            │  100.0     │  Vi phạm ràng buộc CỨNG          │
-#  │ Lố ngân sách            │    0.5     │  Ràng buộc mềm                   │
-#  │ Thời gian chờ           │    0.2     │  Chất lượng trải nghiệm du lịch  │
-#  └─────────────────────────┴────────────┴──────────────────────────────────┘
+#  PENALTY COEFFICIENTS
 #
 #  Ví dụ tác động phạt chờ:
 #    Chờ 15'  → phạt  3.0   (bình thường, ghé cafe)

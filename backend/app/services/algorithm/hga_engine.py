@@ -196,8 +196,13 @@ class HybridGeneticAlgorithm:
         unique_routes: int,
         insert_fail_rate: float,
     ) -> dict[str, float]:
-        """Adaptive-Lite 2 tầng: schedule theo progress + feedback trạng thái quần thể."""
+        """Adaptive-Lite 2 tầng: schedule theo progress + feedback trạng thái quần thể.
+
+        Ghi chú: hàm này chạy mỗi generation. Kết quả được truyền vào `mutate(...)`;
+        vì vậy tỷ lệ mutation trong luồng chuẩn là động theo thời gian, không cố định.
+        """
         if not self.use_adaptive_mutation:
+            # Chế độ tắt adaptive: trả về tỷ lệ tĩnh để phục vụ ablation/baseline.
             if self.use_insertion_mutation:
                 return {"2opt": 0.3, "swap": 0.3, "insertion": 0.4}
             return {"2opt": 0.5, "swap": 0.5, "insertion": 0.0}
@@ -355,6 +360,7 @@ class HybridGeneticAlgorithm:
                 unique_routes_before,
                 avg_insert_fail,
             )
+            # `operator_probs` luôn được pass xuống mutate trong run chuẩn.
             insertion_attempts = 0
             insertion_success = 0
 
