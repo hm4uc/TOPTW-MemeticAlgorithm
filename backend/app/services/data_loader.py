@@ -13,25 +13,28 @@ from pathlib import Path
 from typing import List
 from app.models.domain import POI
 
-# --- DANH SÁCH CATEGORY CHUẨN ---
+# --- DANH SÁCH CATEGORY CHUẨN (6 loại) ---
 CATEGORIES = [
-    'history_culture',  # Lăng Bác, Văn Miếu, Hoàng Thành, Chùa Một Cột, ...
-    'nature_parks',     # Công viên Thống Nhất, Hồ Gươm, Vườn hoa Lý Thái Tổ, ...
-    'food_drink',       # Phở Thìn, Bún Chả Hương Liên, Cà phê Giảng, ...
-    'shopping',         # Chợ Đồng Xuân, Vincom Bà Triệu, Tràng Tiền Plaza, ...
-    'entertainment'     # Rạp chiếu phim Quốc gia, Nhà hát Lớn Hà Nội, ...
+    'history_culture',      # Lăng Bác, Văn Miếu, Hoàng Thành, Chùa Một Cột, ...
+    'nature_parks',         # Công viên Thống Nhất, Hồ Gươm, Vườn hoa Lý Thái Tổ, ...
+    'food_drink',           # Phở Thìn, Bún Chả Hương Liên, Cà phê Giảng, ...
+    'shopping',             # Chợ Đồng Xuân, Vincom Bà Triệu, Tràng Tiền Plaza, ...
+    'entertainment',        # Rạp chiếu phim Quốc gia, Nhà hát Lớn Hà Nội, ...
+    'nightlife_wellness',   # Tạ Hiện, Rooftop bar, Spa, Chợ đêm, ...
 ]
 
-# Tỷ lệ xuất hiện giả lập (Mô phỏng đặc thù du lịch Hà Nội)
-CATEGORY_WEIGHTS = [0.35, 0.15, 0.25, 0.15, 0.10]
+# Tỷ lệ xuất hiện (Fallback cho legacy mode — 5 cat ban ngày)
+# nightlife_wellness được gán DETERMINISTIC theo Time Window trong extended CSV
+CATEGORY_WEIGHTS = [0.30, 0.15, 0.25, 0.15, 0.15]
 
 # ── BẢNG GIÁ THEO LOẠI HÌNH (Pricing Tiers) ────────────────────────────────
 CATEGORY_PRICE_TIERS: dict[str, list[float]] = {
-    'nature_parks':    [0.0],
-    'history_culture': [30_000.0, 50_000.0, 100_000.0],
-    'entertainment':   [100_000.0, 200_000.0, 500_000.0],
-    'food_drink':      [50_000.0, 150_000.0, 300_000.0, 800_000.0],
-    'shopping':        [0.0, 100_000.0, 300_000.0, 500_000.0],
+    'nature_parks':         [0.0],
+    'history_culture':      [30_000.0, 50_000.0, 100_000.0],
+    'entertainment':        [100_000.0, 200_000.0, 500_000.0],
+    'food_drink':           [50_000.0, 150_000.0, 300_000.0, 800_000.0],
+    'shopping':             [0.0, 100_000.0, 300_000.0, 500_000.0],
+    'nightlife_wellness':   [100_000.0, 200_000.0, 500_000.0],
 }
 
 

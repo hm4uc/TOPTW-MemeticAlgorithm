@@ -69,7 +69,7 @@ def build_distance_matrix(pois: List[POI]) -> list[list[float]]:
     return matrix
 
 
-def get_travel_time(p1: POI, p2: POI) -> float | type[None[Any]]:
+def get_travel_time(p1: POI, p2: POI) -> float:
     """
     Travel time between two POIs.
     For Solomon benchmarks, travel time == Euclidean distance

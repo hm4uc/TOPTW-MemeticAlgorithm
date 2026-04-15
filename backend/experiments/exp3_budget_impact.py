@@ -44,6 +44,7 @@ FIXED_INTERESTS = {
     "food_drink": 3,
     "shopping": 2,
     "entertainment": 4,
+    "nightlife_wellness": 3,
 }
 
 # ── 3 mức ngân sách ──────────────────────────────────────────────────────────
@@ -120,8 +121,8 @@ def main():
 
     # ── Bảng tổng hợp ───────────────────────────────────────────────────────
     cat_cols = ["cat_history_culture", "cat_nature_parks", "cat_food_drink",
-                "cat_shopping", "cat_entertainment"]
-    cat_short = ["Hist", "Nat", "Food", "Shop", "Ent"]
+                "cat_shopping", "cat_entertainment", "cat_nightlife_wellness"]
+    cat_short = ["Hist", "Nat", "Food", "Shop", "Ent", "Night"]
 
     print(f"\n\n{'=' * 130}")
     print("  BẢNG TỔNG HỢP — TÁC ĐỘNG NGÂN SÁCH LÊN LỘ TRÌNH")

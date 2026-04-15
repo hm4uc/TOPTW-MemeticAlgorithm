@@ -26,7 +26,8 @@ STAR_TO_WEIGHT: Dict[int, float] = {
 
 # Danh sách category hợp lệ
 VALID_CATEGORIES = {
-    'history_culture', 'nature_parks', 'food_drink', 'shopping', 'entertainment'
+    'history_culture', 'nature_parks', 'food_drink', 'shopping',
+    'entertainment', 'nightlife_wellness'
 }
 
 # Danh sách Solomon instances hỗ trợ trong API/pipeline
@@ -54,7 +55,8 @@ class UserPreferences(BaseModel):
                         "nature_parks": 3,
                         "food_drink": 4,
                         "shopping": 1,
-                        "entertainment": 2
+                        "entertainment": 2,
+                        "nightlife_wellness": 3
                     }
                 }
             ]
@@ -74,7 +76,8 @@ class UserPreferences(BaseModel):
         description=(
             "Mức độ quan tâm của người dùng với từng loại hình địa điểm, "
             "tính bằng số sao từ 1 đến 5. "
-            "Key phải thuộc: history_culture, nature_parks, food_drink, shopping, entertainment. "
+            "Key phải thuộc: history_culture, nature_parks, food_drink, "
+            "shopping, entertainment, nightlife_wellness. "
             "1 sao = không quan tâm (w=0.1), 2 sao = ít quan tâm (w=0.5), "
             "3 sao = trung bình (w=1.0), 4 sao = quan tâm nhiều (w=1.5), "
             "5 sao = rất quan tâm (w=2.0)."
@@ -120,7 +123,7 @@ class UserPreferences(BaseModel):
         if missing:
             raise ValueError(
                 f"Thiếu đánh giá cho các category: {sorted(missing)}. "
-                f"Phải cung cấp đủ 5 category: {sorted(VALID_CATEGORIES)}"
+                f"Phải cung cấp đủ 6 category: {sorted(VALID_CATEGORIES)}"
             )
 
         for category, stars in v.items():

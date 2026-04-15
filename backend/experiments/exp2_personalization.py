@@ -34,22 +34,27 @@ USER_PROFILES = {
     "baseline": {
         "history_culture": 3, "nature_parks": 3,
         "food_drink": 3, "shopping": 3, "entertainment": 3,
+        "nightlife_wellness": 3,
     },
     "history_buff": {
         "history_culture": 5, "nature_parks": 2,
         "food_drink": 3, "shopping": 1, "entertainment": 1,
+        "nightlife_wellness": 1,
     },
     "foodie": {
         "history_culture": 1, "nature_parks": 2,
         "food_drink": 5, "shopping": 1, "entertainment": 3,
+        "nightlife_wellness": 2,
     },
     "explorer": {
         "history_culture": 3, "nature_parks": 5,
         "food_drink": 2, "shopping": 1, "entertainment": 4,
+        "nightlife_wellness": 3,
     },
     "shopper": {
         "history_culture": 1, "nature_parks": 1,
         "food_drink": 3, "shopping": 5, "entertainment": 2,
+        "nightlife_wellness": 2,
     },
 }
 
@@ -115,8 +120,8 @@ def main():
 
     # ── Bảng tổng hợp ───────────────────────────────────────────────────────
     cat_cols = ["cat_history_culture", "cat_nature_parks", "cat_food_drink",
-                "cat_shopping", "cat_entertainment"]
-    cat_short = ["Hist", "Nat", "Food", "Shop", "Ent"]
+                "cat_shopping", "cat_entertainment", "cat_nightlife_wellness"]
+    cat_short = ["Hist", "Nat", "Food", "Shop", "Ent", "Night"]
 
     print(f"\n\n{'=' * 110}")
     print("  BẢNG TỔNG HỢP — PHÂN BỐ CATEGORY THEO PROFILE (Số lượng + Tỷ lệ %)")

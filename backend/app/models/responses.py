@@ -15,7 +15,7 @@ class ItineraryItem(BaseModel):
     order:           int            = Field(...,  description="Thứ tự trong lộ trình (bắt đầu từ 1)")
     id:              int            = Field(...,  description="ID điểm tham quan")
     name:            str            = Field(...,  description="Tên điểm tham quan")
-    category:        Optional[str]  = Field(None, description="Loại điểm tham quan (history_culture, nature_parks, food_drink, shopping, entertainment, depot)")
+    category:        Optional[str]  = Field(None, description="Loại điểm tham quan (history_culture, nature_parks, food_drink, shopping, entertainment, nightlife_wellness, depot)")
     travel_distance: Optional[float]= Field(None, description="Khoảng cách từ điểm trước đó (đơn vị khoảng cách)")
     travel_time:     Optional[int]  = Field(None, description="Thời gian di chuyển từ điểm trước đó (phút)")
     arrival:         Optional[str]  = Field(None, description="Thời gian đến nơi (HH:MM)")

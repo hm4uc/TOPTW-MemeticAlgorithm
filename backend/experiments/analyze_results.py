@@ -106,9 +106,9 @@ def analyze_exp2_personalization() -> pd.DataFrame:
 
     cat_cols = [
         "cat_history_culture", "cat_nature_parks", "cat_food_drink",
-        "cat_shopping", "cat_entertainment",
+        "cat_shopping", "cat_entertainment", "cat_nightlife_wellness",
     ]
-    cat_short = ["Hist", "Nat", "Food", "Shop", "Ent"]
+    cat_short = ["Hist", "Nat", "Food", "Shop", "Ent", "Night"]
 
     rows = []
     for profile, dfs in sorted(grouped.items()):
@@ -152,7 +152,7 @@ def analyze_exp3_budget_impact() -> pd.DataFrame:
     budget_tiers = {"backpacker_200k", "standard_500k", "luxury_unlimited"}
     cat_cols = [
         "cat_history_culture", "cat_nature_parks", "cat_food_drink",
-        "cat_shopping", "cat_entertainment",
+        "cat_shopping", "cat_entertainment", "cat_nightlife_wellness",
     ]
     grouped: DefaultDict[str, list[pd.DataFrame]] = defaultdict(list)
 

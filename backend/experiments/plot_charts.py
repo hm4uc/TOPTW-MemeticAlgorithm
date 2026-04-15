@@ -68,10 +68,12 @@ CAT_COLORS = {
     "Food":      "#FF6347",
     "Shopping":  "#DAA520",
     "Entertain": "#9370DB",
+    "Nightlife": "#E91E63",
 }
-CAT_ORDER  = ["History", "Nature", "Food", "Shopping", "Entertain"]
+CAT_ORDER  = ["History", "Nature", "Food", "Shopping", "Entertain", "Nightlife"]
 CAT_COLS   = ["cat_history_culture", "cat_nature_parks",
-              "cat_food_drink", "cat_shopping", "cat_entertainment"]
+              "cat_food_drink", "cat_shopping", "cat_entertainment",
+              "cat_nightlife_wellness"]
 
 BKS = {"C101": 320, "C201": 870, "R101": 198,
        "R201": 797, "RC101": 219, "RC201": 795}
@@ -183,6 +185,7 @@ def plot_route_comparison(results_dir: str = "experiments/results/exp2_personali
         "food_drink":      "#FF6347",
         "shopping":        "#DAA520",
         "entertainment":   "#9370DB",
+        "nightlife_wellness": "#E91E63",
         "depot":           "#FFC107",
     }
 
@@ -523,9 +526,9 @@ def plot_exp3_budget_bars(
     df["sort_key"] = df["Budget_Tier"].map({t: i for i, t in enumerate(tier_order)})
     df = df.sort_values("sort_key").reset_index(drop=True)
 
-    cat_pct_cols = ["Cat_Hist%", "Cat_Nat%", "Cat_Food%", "Cat_Shop%", "Cat_Ent%"]
-    cat_labels = ["History", "Nature", "Food", "Shopping", "Entertainment"]
-    cat_colors = ["#4169E1", "#228B22", "#FF6347", "#DAA520", "#9370DB"]
+    cat_pct_cols = ["Cat_Hist%", "Cat_Nat%", "Cat_Food%", "Cat_Shop%", "Cat_Ent%", "Cat_Night%"]
+    cat_labels = ["History", "Nature", "Food", "Shopping", "Entertainment", "Nightlife"]
+    cat_colors = ["#4169E1", "#228B22", "#FF6347", "#DAA520", "#9370DB", "#E91E63"]
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6), gridspec_kw={"width_ratios": [3, 2]})
 

@@ -444,10 +444,10 @@ class HybridGeneticAlgorithm:
             # ── Early Stopping Check ──────────────────────────────────────────
             if gens_without_improvement >= self.stagnation_limit:
                 print(
-                    f"\n[HGA] ★ EARLY STOPPING ★ "
-                    f"Best fitness không cải thiện trong "
-                    f"{self.stagnation_limit} thế hệ liên tiếp. "
-                    f"Dừng tại gen {gen + 1}/{self.generations}."
+                    f"\n[HGA] ** EARLY STOPPING ** "
+                    f"Best fitness khong cai thien trong "
+                    f"{self.stagnation_limit} the he lien tiep. "
+                    f"Dung tai gen {gen + 1}/{self.generations}."
                 )
                 break
 
@@ -457,7 +457,7 @@ class HybridGeneticAlgorithm:
         self.actual_gens = actual_gens
         self.best_individual = best_ever
 
-        print(f"\n[HGA] ═══ KẾT QUẢ CUỐI CÙNG ═══")
+        print(f"\n[HGA] === FINAL RESULT ===")
         print(f"      Generations run   = {actual_gens}/{self.generations}")
         print(f"      Best-ever fitness = {best_ever.fitness:.2f}")
         print(f"      Total wait time   = {best_ever.total_wait:.1f}")

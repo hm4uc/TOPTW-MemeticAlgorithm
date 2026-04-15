@@ -37,9 +37,10 @@ INSTANCE_CONFIGS = {
     "RC201": {"depot_due": 960,  "service_time": 10},
 }
 
-# 5 categories chuẩn
+# 6 categories chuẩn
 ALL_CATEGORIES = [
-    "history_culture", "nature_parks", "food_drink", "shopping", "entertainment"
+    "history_culture", "nature_parks", "food_drink", "shopping",
+    "entertainment", "nightlife_wellness"
 ]
 
 
