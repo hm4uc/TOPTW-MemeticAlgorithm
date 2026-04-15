@@ -1,4 +1,4 @@
 Variant,Norm_Score%,Norm_Std,Time(s),Gens_Avg,Diff%,Rows
-full_hga,99.9,0.28,32.548,37.3,baseline,30
-no_smart_repair,99.53,0.79,33.32,41.03,-0.37%,30
-no_local_search,92.3,7.95,2.137,44.33,-7.60%,30
+full_hga,99.9,0.28,31.385,37.3,baseline,30
+no_smart_repair,99.53,0.79,31.206,41.03,-0.37%,30
+no_local_search,92.3,7.95,2.304,44.33,-7.60%,30
