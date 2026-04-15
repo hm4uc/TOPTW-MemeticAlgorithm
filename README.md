@@ -1,14 +1,14 @@
 # TOPTW-HybridGA
 
-**A Memetic Algorithm for the Team Orienteering Problem with Time Windows (TOPTW) — Personalized Travel Itinerary Optimization**
+**A Memetic Algorithm for the Team Orienteering Problem with Time Windows (TOPTW) - Personalized Travel Itinerary Optimization**
 
-> Thesis project — Faculty of Information Technology, VNU University of Engineering and Technology
+> Thesis project - Faculty of Information Technology, VNU University of Engineering and Technology
 
 ## Overview
 
 This system solves the **Team Orienteering Problem with Time Windows (TOPTW)** with user-dependent scoring. Unlike classic TOPTW where each POI has a fixed profit, our model computes personalized scores based on user preferences across 6 interest categories, subject to budget and time window constraints.
 
-The solver implements a **Memetic Algorithm (MA)** — a Genetic Algorithm hybridized with local search operators — exposed via a REST API.
+The solver implements a **Memetic Algorithm (MA)** - a Genetic Algorithm hybridized with local search operators - exposed via a REST API.
 
 ## Algorithm Design
 
@@ -25,7 +25,7 @@ The solver implements a **Memetic Algorithm (MA)** — a Genetic Algorithm hybri
 
 ### Key Features
 
-- **User-Dependent Scoring**: POI scores weighted by 6 interest categories (1–5 stars each)
+- **User-Dependent Scoring**: POI scores weighted by 6 interest categories (1-5 stars each)
 - **Budget Constraint**: Ticket prices per POI category, based on Hanoi tourism statistics
 - **Adaptive Mutation**: Operator probabilities shift dynamically based on search progress, diversity, and insertion failure rate
 - **Ablation-Ready**: Every component can be toggled on/off for controlled experiments
@@ -139,19 +139,19 @@ cd backend
 # Generate extended dataset (category + price)
 py -m experiments.generate_extended_data
 
-# Benchmark vs Labadie (2012) — 30 runs × 6 instances
+# Benchmark vs Labadie (2012) - 30 runs × 6 instances
 py -m experiments.exp1_benchmark
 
-# Personalization value — 10 runs × 5 profiles
+# Personalization value - 10 runs × 5 profiles
 py -m experiments.exp2_personalization
 
-# Budget impact — 10 runs × 3 tiers
+# Budget impact - 10 runs × 3 tiers
 py -m experiments.exp3_budget_impact
 
-# Ablation study — 10 runs × 3 variants × 6 instances
+# Ablation study - 10 runs × 3 variants × 6 instances
 py -m experiments.exp4_ablation_repair
 
-# Parameter sensitivity — 5 runs × 16 configs × 6 instances
+# Parameter sensitivity - 5 runs × 16 configs × 6 instances
 py -m experiments.exp5_sensitivity
 
 # Analyze & plot
@@ -161,18 +161,7 @@ py -m experiments.plot_charts
 
 ## Benchmark Results (Solomon TOPTW)
 
-Comparison with Labadie et al. (2012) GVNS on 6 Solomon instances, single-vehicle (m=1):
-
-| Instance | BKS | GVNS Avg | HGA Best | HGA Avg | HGA Gap% |
-|---|---|---|---|---|---|
-| C101 | 320 | 320.0 | 320 | — | — |
-| C201 | 870 | 850.0 | — | — | — |
-| R101 | 198 | 197.0 | — | — | — |
-| R201 | 797 | 775.6 | — | — | — |
-| RC101 | 219 | 219.0 | — | — | — |
-| RC201 | 795 | 784.0 | — | — | — |
-
-> Results will be updated after running `exp1_benchmark.py` with the latest code.
+Comparison with Labadie et al. (2012) GVNS on 6 Solomon instances, single-vehicle (m=1).
 
 ## License
 
@@ -180,4 +169,4 @@ Distributed under the MIT License. See `LICENSE` for details.
 
 ## Author
 
-**Hoang Minh Duc** — Faculty of Information Technology, VNU University of Engineering and Technology (VNU-UET)
+**Hoang Minh Duc** - Faculty of Information Technology, VNU University of Engineering and Technology (VNU-UET)
