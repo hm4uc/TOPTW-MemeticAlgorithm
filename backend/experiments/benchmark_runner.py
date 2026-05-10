@@ -2,7 +2,7 @@
 Benchmark Runner — Chạy batch thí nghiệm tự động + lưu kết quả CSV.
 
 Cung cấp:
-  • run_single()  — Chạy 1 lần HGA, trả về dict metrics.
+  • run_single()  — Chạy 1 lần MA, trả về dict metrics.
   • run_batch()   — Chạy N lần, lưu CSV, in summary.
   • create_fixed_prefs() — Tạo UserPreferences cho chế độ Fixed Score.
 
@@ -21,7 +21,7 @@ import pandas as pd
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from app.services.data_loader import load_solomon_instance
-from app.services.algorithm.hga_engine import HybridGeneticAlgorithm
+from app.services.algorithm.ma_engine import MemeticAlgorithm
 from app.models.requests import UserPreferences
 
 
@@ -109,7 +109,7 @@ def run_single(
     ga_params: dict = None,
 ) -> dict:
     """
-    Chạy 1 lần HGA, trả về dict metrics.
+    Chạy 1 lần MA, trả về dict metrics.
 
     Parameters
     ----------
@@ -132,16 +132,16 @@ def run_single(
     flags = ablation_flags or {}
     params = ga_params or {}
 
-    hga = HybridGeneticAlgorithm(
+    ma = MemeticAlgorithm(
         user_prefs=user_prefs,
         pois=pois,
         instance_name=instance_name,
         **flags,
         **params,
     )
-    response = hga.run()
+    response = ma.run()
 
-    best = hga.best_individual
+    best = ma.best_individual
     route_ids = [p.id for p in best.route]
 
     # Đếm category distribution trong route
@@ -159,9 +159,9 @@ def run_single(
         "total_cost": best.total_cost,
         "total_duration": response.total_duration,
         "execution_time": response.execution_time,
-        "generations_run": hga.actual_gens,
+        "generations_run": ma.actual_gens,
         "route_ids": json.dumps(route_ids),
-        "convergence_log": json.dumps(hga.convergence_log),
+        "convergence_log": json.dumps(ma.convergence_log),
         **{f"cat_{cat}": cnt for cat, cnt in cat_counts.items()},
     }
 
@@ -177,7 +177,7 @@ def run_batch(
     ga_params: dict = None,
 ) -> pd.DataFrame:
     """
-    Chạy N lần HGA, lưu kết quả CSV, in summary.
+    Chạy N lần MA, lưu kết quả CSV, in summary.
 
     Returns
     -------
@@ -238,7 +238,7 @@ def run_batch(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Benchmark runner cho HGA-TOPTW")
+    parser = argparse.ArgumentParser(description="Benchmark runner cho MA-TOPTW")
     parser.add_argument("--instance", default="C101", choices=list(INSTANCE_CONFIGS.keys()))
     parser.add_argument("--num-runs", type=int, default=1)
     parser.add_argument("--label", default="cli")

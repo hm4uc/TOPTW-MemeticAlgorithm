@@ -15,7 +15,7 @@ RANDOM_COUNT:    int = 20     # 20% → Pure Random
 RCL_SIZE:        int = 3      # Top-k candidates trong Restricted Candidate List
 
 # =============================================================================
-#  GA TUNABLE DEFAULTS  (có thể override khi khởi tạo HybridGeneticAlgorithm)
+#  GA TUNABLE DEFAULTS  (có thể override khi khởi tạo MemeticAlgorithm)
 # =============================================================================
 
 DEFAULT_MUTATION_RATE:     float = 0.3
