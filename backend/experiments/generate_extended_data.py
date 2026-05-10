@@ -19,7 +19,7 @@ import csv
 import os
 import random
 
-# ── Category Configuration (6 categories) ────────────────────────────────────
+# - Category Configuration (6 categories) -
 # 5 category "ban ngày" — gán theo phân phối xác suất
 DAYTIME_CATEGORIES = [
     'history_culture',      # Lăng Bác, Văn Miếu, Hoàng Thành, ...
@@ -41,7 +41,7 @@ NIGHTLIFE_THRESHOLD = 0.75
 # Danh sách đầy đủ 6 categories (dùng cho thống kê)
 ALL_CATEGORIES = DAYTIME_CATEGORIES + [NIGHTLIFE_CATEGORY]
 
-# ── Bảng giá theo loại hình (VND) ────────────────────────────────────────────
+# - Bảng giá theo loại hình (VND) -
 CATEGORY_PRICE_TIERS: dict[str, list[float]] = {
     'nature_parks':         [0.0],
     'history_culture':      [30_000.0, 50_000.0, 100_000.0],
@@ -83,7 +83,7 @@ def generate_extended(instance_name: str, base_dir: str) -> None:
             cat = "depot"
             price = 0.0
         elif ready_time >= nightlife_ready_threshold:
-            # ★ DETERMINISTIC: POI mở muộn → nightlife_wellness
+            #  DETERMINISTIC: POI mở muộn → nightlife_wellness
             cat = NIGHTLIFE_CATEGORY
             rng = random.Random(pid)
             price = rng.choice(CATEGORY_PRICE_TIERS[NIGHTLIFE_CATEGORY])
@@ -121,14 +121,14 @@ def main():
         base_dir = os.path.dirname(base_dir)
 
     print("=" * 70)
-    print("  GENERATE EXTENDED CSV -- 6 Categories + Nightlife (Time-Window Based)")
+    print("  GENERATE EXTENDED CSV - 6 Categories + Nightlife (Time-Window Based)")
     print("=" * 70)
 
     for inst in INSTANCES:
         generate_extended(inst, base_dir)
 
     print(f"\n{'=' * 70}")
-    print(f"  [OK] TAT CA {len(INSTANCES)} EXTENDED CSV DA DUOC TAO.")
+    print(f"  [OK] ALL {len(INSTANCES)} EXTENDED CSV FILES CREATED.")
     output_dir = os.path.join(base_dir, 'data', 'solomon_instances', 'extended')
     print(f"  Dir: {output_dir}")
     print("=" * 70)

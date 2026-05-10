@@ -1,7 +1,7 @@
 """
 Thí nghiệm 5: Phân tích Độ nhạy (Sensitivity Analysis).
 
-★ CHIẾN LƯỢC ★
+ CHIẾN LƯỢC 
   • Chạy trên TOÀN BỘ 6 instances (C101, C201, R101, R201, RC101, RC201)
   • Mỗi instance chuẩn hóa score bằng BKS → Normalized Score (0-100%)
   • Lấy trung bình chuẩn hóa → kết quả robust, không bị thiên lệch
@@ -20,9 +20,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from experiments.benchmark_runner import run_batch, create_fixed_prefs, parse_instances_arg
 
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 #  Cấu hình
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 INSTANCES = ["C101", "C201", "R101", "R201", "RC101", "RC201"]
 NUM_RUNS = 5   # 5 runs × 6 instances × 16 configs = 480 runs tổng
 OUTPUT_DIR = "experiments/results/exp5_sensitivity"
@@ -34,9 +34,9 @@ BKS = {
     "R201": 797, "RC101": 219, "RC201": 795,
 }
 
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 #  Parameter Grid
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 PARAM_GRID = {
     "population_size": [50, 100, 150, 200],
     "mutation_rate": [0.3, 0.5, 0.7, 0.9],
@@ -75,11 +75,11 @@ def main():
         raise SystemExit(f"\nLỗi tham số --instances: {e}\n")
 
     print("=" * 70)
-    print("  THÍ NGHIỆM 5: SENSITIVITY ANALYSIS (Normalized)")
+    print("  EXPERIMENT 5: SENSITIVITY ANALYSIS (Normalized)")
     print(f"  Instances: {instances}")
-    print(f"  Runs/config/instance: {args.num_runs}")
+    print(f"  Runs per config per instance: {args.num_runs}")
     total_runs = args.num_runs * len(instances) * sum(len(v) for v in PARAM_GRID.values())
-    print(f"  Tổng số runs: {total_runs}")
+    print(f"  Total runs: {total_runs}")
     print("=" * 70)
 
     # Dict lưu: {label: {instance: df, ...}}
@@ -112,17 +112,17 @@ def main():
                 )
                 all_results[label]["dfs"][inst] = df
 
-    # ══════════════════════════════════════════════════════════════════════════
+    # 
     #  Bảng tổng hợp — Normalized Score (% of BKS)
-    # ══════════════════════════════════════════════════════════════════════════
+    # 
     print(f"\n\n{'=' * 90}")
-    print("  BẢNG TỔNG HỢP — SENSITIVITY ANALYSIS (Normalized % of BKS)")
+    print("  FINAL SUMMARY - SENSITIVITY ANALYSIS (Normalized % of BKS)")
     print(f"{'=' * 90}")
 
     summary_rows = []
 
     for param_name, values in PARAM_GRID.items():
-        print(f"\n  ── {param_name} (default = {DEFAULTS[param_name]}) ──")
+        print(f"\n  - {param_name} (default = {DEFAULTS[param_name]}) -")
         print(f"  {'Value':>10} {'Norm Score%':>12} {'±Std':>8} "
               f"{'Time(s)':>10} {'Gens':>8}  Per-Instance Norm%")
         print(f"  {'-' * 80}")
@@ -168,7 +168,7 @@ def main():
     os.makedirs("experiments/results/summary", exist_ok=True)
     out_path = "experiments/results/summary/exp5_sensitivity_normalized.csv"
     summary_df.to_csv(out_path, index=False)
-    print(f"\n  📄 Normalized summary saved to: {out_path}")
+    print(f"\n   Normalized summary saved to: {out_path}")
 
 
 if __name__ == "__main__":

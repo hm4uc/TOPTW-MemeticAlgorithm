@@ -78,7 +78,7 @@ async def optimize_itinerary(request: UserPreferences):
     try:
         logger.info("Received optimization request with preferences: %s", request)
 
-        # ── Load đúng instance theo request + validate start_node_id ──────
+        # - Load đúng instance theo request + validate start_node_id -
         pois = load_solomon_instance(request.instance_name)
         if not pois:
             raise HTTPException(
@@ -100,7 +100,7 @@ async def optimize_itinerary(request: UserPreferences):
                 ),
             )
 
-        # ── Run HGA ───────────────────────────────────────────────────────
+        # - Run MA -
         ma_solver = MemeticAlgorithm(
             request,
             pois=pois,
@@ -108,7 +108,7 @@ async def optimize_itinerary(request: UserPreferences):
         )
         result = ma_solver.run()
 
-        # ── Edge Case 7: GA trả về route rỗng [Depot, Depot] ─────────────
+        # - Edge Case 7: GA trả về route rỗng [Depot, Depot] -
         if not result:
             raise HTTPException(
                 status_code=404,

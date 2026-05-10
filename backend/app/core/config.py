@@ -1,5 +1,5 @@
 """
-Cấu hình trung tâm cho toàn bộ hệ thống TOPTW-HybridGA.
+Cấu hình trung tâm cho toàn bộ hệ thống TOPTW-MemeticAlgorithm.
 
 Tập trung tất cả hằng số, hệ số phạt và tham số GA mặc định
 để dễ dàng điều chỉnh mà không cần tìm rải rác trong nhiều file.

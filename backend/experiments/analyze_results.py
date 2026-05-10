@@ -41,13 +41,13 @@ def _safe_read_csv(path: Path) -> pd.DataFrame | None:
     try:
         return pd.read_csv(path)
     except Exception as e:
-        print(f"  ⚠ Bỏ qua {path.name}: {e}")
+        print(f"   Skipping {path.name}: {e}")
         return None
 
 
 def analyze_exp1_benchmark() -> pd.DataFrame:
     print("\n" + "=" * 110)
-    print("  THÍ NGHIỆM 1: SO SÁNH HGA vs LABADIE GVNS")
+    print("  EXPERIMENT 1: MA vs LABADIE GVNS")
     print("=" * 110)
 
     exp_dir = RESULTS_DIR / "exp1_benchmark"
@@ -63,7 +63,7 @@ def analyze_exp1_benchmark() -> pd.DataFrame:
 
         bks = LABADIE_BKS[inst]
         gvns = LABADIE_GVNS[inst]
-        hga_avg = df["total_score"].mean()
+        ma_avg = df["total_score"].mean()
 
         rows.append({
             "Instance": inst,
@@ -72,24 +72,24 @@ def analyze_exp1_benchmark() -> pd.DataFrame:
             "GVNS_Avg": gvns["avg"],
             "GVNS_Gap%": gvns["gap"],
             "GVNS_Time(s)": gvns["time"],
-            "HGA_Best": df["total_score"].max(),
-            "HGA_Avg": round(hga_avg, 2),
-            "HGA_Std": round(df["total_score"].std(), 2),
-            "HGA_Gap%": round((bks - hga_avg) / bks * 100, 2),
-            "HGA_Time(s)": round(df["execution_time"].mean(), 3),
+            "MA_Best": df["total_score"].max(),
+            "MA_Avg": round(ma_avg, 2),
+            "MA_Std": round(df["total_score"].std(), 2),
+            "MA_Gap%": round((bks - ma_avg) / bks * 100, 2),
+            "MA_Time(s)": round(df["execution_time"].mean(), 3),
             "Runs": len(df),
         })
 
     summary_df = pd.DataFrame(rows).sort_values("Instance") if rows else pd.DataFrame()
     out_path = SUMMARY_DIR / "exp1_benchmark_summary.csv"
     summary_df.to_csv(out_path, index=False)
-    print(f"  📄 Saved: {out_path}")
+    print(f"   Saved: {out_path}")
     return summary_df
 
 
 def analyze_exp2_personalization() -> pd.DataFrame:
     print("\n" + "=" * 100)
-    print("  THÍ NGHIỆM 2: GIÁ TRỊ CÁ NHÂN HÓA")
+    print("  EXPERIMENT 2: PERSONALIZATION VALUE")
     print("=" * 100)
 
     exp_dir = RESULTS_DIR / "exp2_personalization"
@@ -139,13 +139,13 @@ def analyze_exp2_personalization() -> pd.DataFrame:
     summary_df = pd.DataFrame(rows)
     out_path = SUMMARY_DIR / "exp2_personalization_summary.csv"
     summary_df.to_csv(out_path, index=False)
-    print(f"  📄 Saved: {out_path}")
+    print(f"   Saved: {out_path}")
     return summary_df
 
 
 def analyze_exp3_budget_impact() -> pd.DataFrame:
     print("\n" + "=" * 100)
-    print("  THÍ NGHIỆM 3: TÁC ĐỘNG NGÂN SÁCH")
+    print("  EXPERIMENT 3: BUDGET IMPACT")
     print("=" * 100)
 
     exp_dir = RESULTS_DIR / "exp3_budget_impact"
@@ -186,17 +186,17 @@ def analyze_exp3_budget_impact() -> pd.DataFrame:
     summary_df = pd.DataFrame(rows)
     out_path = SUMMARY_DIR / "exp3_budget_impact_summary.csv"
     summary_df.to_csv(out_path, index=False)
-    print(f"  📄 Saved: {out_path}")
+    print(f"   Saved: {out_path}")
     return summary_df
 
 
 def analyze_exp4_ablation_repair() -> pd.DataFrame:
     print("\n" + "=" * 100)
-    print("  THÍ NGHIỆM 4: ABLATION STUDY — SMART REPAIR & LOCAL SEARCH")
+    print("  EXPERIMENT 4: ABLATION STUDY - SMART REPAIR & LOCAL SEARCH")
     print("=" * 100)
 
     exp_dir = RESULTS_DIR / "exp4_ablation_repair"
-    variants = {"full_hga", "no_smart_repair", "no_local_search"}
+    variants = {"full_ma", "no_smart_repair", "no_local_search"}
     grouped: DefaultDict[str, list[tuple[str, pd.DataFrame]]] = defaultdict(list)
 
     for csv_path in sorted(exp_dir.glob("*.csv")):
@@ -213,7 +213,7 @@ def analyze_exp4_ablation_repair() -> pd.DataFrame:
 
     rows = []
     baseline_norm = None
-    for variant in ["full_hga", "no_smart_repair", "no_local_search"]:
+    for variant in ["full_ma", "no_smart_repair", "no_local_search"]:
         if variant not in grouped:
             continue
         norm_scores = []
@@ -227,7 +227,7 @@ def analyze_exp4_ablation_repair() -> pd.DataFrame:
             gen_vals.extend(df["generations_run"].tolist())
 
         avg_norm = float(pd.Series(norm_scores).mean())
-        if variant == "full_hga":
+        if variant == "full_ma":
             baseline_norm = avg_norm
             diff_str = "baseline"
         elif baseline_norm is not None:
@@ -248,13 +248,13 @@ def analyze_exp4_ablation_repair() -> pd.DataFrame:
     summary_df = pd.DataFrame(rows)
     out_path = SUMMARY_DIR / "exp4_ablation_repair_summary.csv"
     summary_df.to_csv(out_path, index=False)
-    print(f"  📄 Saved: {out_path}")
+    print(f"   Saved: {out_path}")
     return summary_df
 
 
 def analyze_exp5_sensitivity() -> pd.DataFrame:
     print("\n" + "=" * 100)
-    print("  THÍ NGHIỆM 5: SENSITIVITY ANALYSIS")
+    print("  EXPERIMENT 5: SENSITIVITY ANALYSIS")
     print("=" * 100)
 
     exp_dir = RESULTS_DIR / "exp5_sensitivity"
@@ -314,7 +314,7 @@ def analyze_exp5_sensitivity() -> pd.DataFrame:
     summary_df = pd.DataFrame(rows)
     out_path = SUMMARY_DIR / "exp5_sensitivity_summary.csv"
     summary_df.to_csv(out_path, index=False)
-    print(f"  📄 Saved: {out_path}")
+    print(f"   Saved: {out_path}")
     return summary_df
 
 
@@ -322,9 +322,9 @@ def analyze_exp5_sensitivity() -> pd.DataFrame:
 
 
 def main():
-    print("╔" + "═" * 78 + "╗")
-    print("║  PHÂN TÍCH KẾT QUẢ THỰC NGHIỆM HGA-TOPTW  —  TỰ ĐỘNG THEO FLOW MỚI     ║")
-    print("╚" + "═" * 78 + "╝")
+    print("=" * 80)
+    print("  RESULTS ANALYSIS MA-TOPTW - AUTOMATED FLOW")
+    print("=" * 80)
 
     analyze_exp1_benchmark()
     analyze_exp2_personalization()
@@ -333,7 +333,7 @@ def main():
     analyze_exp5_sensitivity()
 
     print(f"\n{'=' * 90}")
-    print(f"  ✅ Đã lưu toàn bộ summary vào: {SUMMARY_DIR}")
+    print(f"   All summaries saved to: {SUMMARY_DIR}")
     print(f"{'=' * 90}")
 
 

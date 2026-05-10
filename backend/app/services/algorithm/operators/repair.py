@@ -1,5 +1,5 @@
 """
-Repair Operators — Smart Repair và Greedy Refill.
+Repair Operators - Smart Repair and Greedy Refill.
 
 Smart Repair:
   Sửa chữa cá thể vi phạm ràng buộc bằng cách lần lượt xóa POI
@@ -30,7 +30,7 @@ def repair(
     Sửa chữa individual vi phạm ràng buộc bằng cách xóa POI xấu.
 
     Chế độ mặc định (use_smart_repair=True):
-      ★ SMART REPAIR — xóa POI có tỷ lệ Score/TimeCost kém nhất.
+       SMART REPAIR — xóa POI có tỷ lệ Score/TimeCost kém nhất.
       Tỷ lệ = (base_score × interest_weight) / time_cost_of_removal.
 
     Chế độ ablation (use_smart_repair=False):
@@ -56,7 +56,7 @@ def repair(
 
     while not check_constraints(route, user_prefs) and len(route) > 2:
         if use_smart_repair:
-            # ── Smart Repair: tìm POI kém nhất (Score/TimeCost thấp nhất) ──
+            # - Smart Repair: tìm POI kém nhất (Score/TimeCost thấp nhất) -
             worst_idx = -1
             worst_value = float('inf')
 
@@ -84,7 +84,7 @@ def repair(
             else:
                 route.pop(-2)
         else:
-            # ── Simple Repair: luôn xóa POI áp chót ─────────────────────
+            # - Simple Repair: luôn xóa POI áp chót -
             route.pop(-2)
 
     individual.route = route
@@ -97,7 +97,7 @@ def greedy_refill(
     user_prefs: UserPreferences,
 ) -> Individual:
     """
-    ★ GREEDY REFILL — Chèn thêm POI vào route sau khi Repair xóa bớt ★
+     GREEDY REFILL — Chèn thêm POI vào route sau khi Repair xóa bớt 
 
     Sau khi Repair cắt POI vi phạm, route thường rất ngắn (1-2 POI).
     Bước này tìm POI chưa ghé, thử chèn vào vị trí tốt nhất (tốn ít

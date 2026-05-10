@@ -1,14 +1,14 @@
 """
 Thí nghiệm 3: Đánh giá Tác động Ràng buộc Ngân sách (Budget Impact).
 
-★ Mục tiêu:
+ Mục tiêu:
   - Chứng minh hệ thống "liệu cơm gắp mắm": tự động điều chỉnh lộ trình
     theo ngân sách người dùng.
   - Backpacker (200k) → ưu tiên công viên/đi dạo (free) thay vì nhà hàng đắt.
   - Standard (500k) → cân bằng giữa trả phí và free.
   - Luxury (∞) → thoải mái chọn mọi điểm, bao gồm entertainment/food đắt đỏ.
 
-★ CHIẾN LƯỢC:
+ CHIẾN LƯỢC:
   - Giữ cố định 1 profile (explorer — balanced nhưng thích nature)
   - Thay đổi 3 mức ngân sách trên instance RC201 (mixed TW, nhiều POI)
   - So sánh: Score, Số POI, Phân bổ category, Tổng chi phí
@@ -30,14 +30,14 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from experiments.benchmark_runner import run_batch, INSTANCE_CONFIGS, parse_instances_arg
 from app.models.requests import UserPreferences
 
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 #  Cấu hình
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 INSTANCES = ["RC201"]
 NUM_RUNS = 10
 OUTPUT_DIR = "experiments/results/exp3_budget_impact"
 
-# ── Profile cố định: Explorer (thích nature + entertainment, ít shopping) ────
+# - Profile cố định: Explorer (thích nature + entertainment, ít shopping) -
 FIXED_INTERESTS = {
     "history_culture": 3,
     "nature_parks": 4,
@@ -47,7 +47,7 @@ FIXED_INTERESTS = {
     "nightlife_wellness": 3,
 }
 
-# ── 3 mức ngân sách ──────────────────────────────────────────────────────────
+# - 3 mức ngân sách -
 # Mức backpacker: chỉ đủ cho ~2-3 điểm trả phí rẻ
 # Mức standard:   đủ cho ~5-6 điểm trung bình
 # Mức luxury:     vô hạn — không bị giới hạn bởi budget
@@ -81,11 +81,11 @@ def main():
 
     total_runs = args.num_runs * len(instances) * len(BUDGET_TIERS)
     print("=" * 76)
-    print("  THÍ NGHIỆM 3: TÁC ĐỘNG RÀNG BUỘC NGÂN SÁCH (BUDGET IMPACT)")
+    print("  EXPERIMENT 3: BUDGET CONSTRAINT IMPACT")
     print(f"  Instances: {instances}")
     print(f"  Budget tiers: {list(BUDGET_TIERS.keys())}")
-    print(f"  Runs/tier/instance: {args.num_runs}")
-    print(f"  Tổng số runs: {total_runs}")
+    print(f"  Runs per tier per instance: {args.num_runs}")
+    print(f"  Total runs: {total_runs}")
     print("=" * 76)
 
     # all_results[tier_name] = [(instance, df), ...]
@@ -119,7 +119,7 @@ def main():
             )
             all_results[tier_name].append((inst, df))
 
-    # ── Bảng tổng hợp ───────────────────────────────────────────────────────
+    # - Bảng tổng hợp -
     cat_cols = ["cat_history_culture", "cat_nature_parks", "cat_food_drink",
                 "cat_shopping", "cat_entertainment", "cat_nightlife_wellness"]
     cat_short = ["Hist", "Nat", "Food", "Shop", "Ent", "Night"]
@@ -140,7 +140,7 @@ def main():
         header_parts.append(f"{s:>5}")
         header_parts.append(f"{'(%)':>5}")
     print("".join(header_parts))
-    print("─" * 130)
+    print("-" * 130)
 
     summary_rows = []
     for tier_name, budget in BUDGET_TIERS.items():
@@ -195,7 +195,7 @@ def main():
             ) for i, s in enumerate(cat_short)},
         })
 
-    # ── Phân tích chuyển dịch danh mục ────────────────────────────────────────
+    # - Phân tích chuyển dịch danh mục -
     print(f"\n{'=' * 90}")
     print("  PHÂN TÍCH CHUYỂN DỊCH DANH MỤC KHI THAY ĐỔI NGÂN SÁCH")
     print(f"{'=' * 90}")
@@ -204,24 +204,24 @@ def main():
         bp = next((r for r in summary_rows if "backpacker" in r["Budget_Tier"]), None)
         lux = next((r for r in summary_rows if "luxury" in r["Budget_Tier"]), None)
         if bp and lux:
-            print(f"\n  So sánh Backpacker vs Luxury:")
-            print(f"    Score:     {bp['Score_Avg']:.1f} → {lux['Score_Avg']:.1f} (Δ={lux['Score_Avg']-bp['Score_Avg']:+.1f})")
-            print(f"    POIs:      {bp['POIs_Avg']:.1f} → {lux['POIs_Avg']:.1f}")
-            print(f"    Cost:      {bp['Cost_Avg']:,.0f} → {lux['Cost_Avg']:,.0f}")
-            print(f"    Free%:     {bp['Free_Pct']:.1f}% → {lux['Free_Pct']:.1f}%")
+            print(f"\n  Comparison: Backpacker vs Luxury:")
+            print(f"    Score:     {bp['Score_Avg']:.1f} -> {lux['Score_Avg']:.1f} (Delta={lux['Score_Avg']-bp['Score_Avg']:+.1f})")
+            print(f"    POIs:      {bp['POIs_Avg']:.1f} -> {lux['POIs_Avg']:.1f}")
+            print(f"    Cost:      {bp['Cost_Avg']:,.0f} -> {lux['Cost_Avg']:,.0f}")
+            print(f"    Free%:     {bp['Free_Pct']:.1f}% -> {lux['Free_Pct']:.1f}%")
             for s in cat_short:
                 bp_pct = bp.get(f'Cat_{s}%', 0)
                 lux_pct = lux.get(f'Cat_{s}%', 0)
                 delta = lux_pct - bp_pct
-                arrow = "↑" if delta > 1 else ("↓" if delta < -1 else "≈")
-                print(f"    {s:>8}:  {bp_pct:5.1f}% → {lux_pct:5.1f}% ({arrow}{delta:+.1f}%)")
+                arrow = "^" if delta > 1 else ("v" if delta < -1 else "~")
+                print(f"    {s:>8}:  {bp_pct:5.1f}% -> {lux_pct:5.1f}% ({arrow}{delta:+.1f}%)")
 
     # Lưu CSV
     summary_df = pd.DataFrame(summary_rows)
     os.makedirs("experiments/results/summary", exist_ok=True)
     out_path = "experiments/results/summary/exp3_budget_impact.csv"
     summary_df.to_csv(out_path, index=False)
-    print(f"\n  📄 Summary saved to: {out_path}")
+    print(f"\n   Summary saved to: {out_path}")
 
 
 if __name__ == "__main__":

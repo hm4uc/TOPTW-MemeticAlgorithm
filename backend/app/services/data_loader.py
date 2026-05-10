@@ -27,7 +27,7 @@ CATEGORIES = [
 # nightlife_wellness được gán DETERMINISTIC theo Time Window trong extended CSV
 CATEGORY_WEIGHTS = [0.30, 0.15, 0.25, 0.15, 0.15]
 
-# ── BẢNG GIÁ THEO LOẠI HÌNH (Pricing Tiers) ────────────────────────────────
+# - BẢNG GIÁ THEO LOẠI HÌNH (Pricing Tiers) -
 CATEGORY_PRICE_TIERS: dict[str, list[float]] = {
     'nature_parks':         [0.0],
     'history_culture':      [30_000.0, 50_000.0, 100_000.0],

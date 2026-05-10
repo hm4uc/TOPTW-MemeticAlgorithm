@@ -19,7 +19,7 @@ from app.core.config import (
 #  Thay vì gọi math.sqrt() hàng triệu lần trong quá trình GA, ta tính
 #  trước ma trận khoảng cách N×N một lần duy nhất khi nạp dữ liệu.
 #  Mọi tra cứu sau đó chỉ mất O(1) (truy cập mảng 2D).
-#  Với 101 POI → ma trận 101×101 = ~10 201 giá trị float ≈ 80 KB RAM.
+#  Với 101 POI → ma trận 101×101 = ~10 201 giá trị float  80 KB RAM.
 #
 # =============================================================================
 
@@ -213,7 +213,7 @@ def calculate_fitness(ind, user_prefs: UserPreferences,
         if arrival < next_p.open_time:
             wait = next_p.open_time - arrival
             total_wait += wait
-            penalty += wait * wait_penalty_weight    # ★ Phạt chờ (configurable)
+            penalty += wait * wait_penalty_weight    #  Phạt chờ (configurable)
             arrival = next_p.open_time              # Vẫn phải chờ đến giờ mở
 
         if arrival > next_p.close_time:

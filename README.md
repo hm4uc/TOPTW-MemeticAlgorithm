@@ -1,6 +1,6 @@
-# TOPTW-HybridGA
+# TOPTW-MemeticAlgorithm
 
-**A Memetic Algorithm for the Team Orienteering Problem with Time Windows (TOPTW) - Personalized Travel Itinerary Optimization**
+**A Memetic Algorithm (MA) for the Team Orienteering Problem with Time Windows (TOPTW) - Personalized Travel Itinerary Optimization**
 
 > Thesis project - Faculty of Information Technology, VNU University of Engineering and Technology
 
@@ -44,7 +44,7 @@ The solver implements a **Memetic Algorithm (MA)** - a Genetic Algorithm hybridi
 ## Project Structure
 
 ```
-TOPTW-HybridGA/
+TOPTW-MemeticAlgorithm/
 ├── backend/
 │   ├── app/
 │   │   ├── main.py                     # FastAPI entry point
@@ -59,7 +59,7 @@ TOPTW-HybridGA/
 │   │   └── services/
 │   │       ├── data_loader.py        # Solomon instance loader & cache
 │   │       └── algorithm/
-│   │           ├── hga_engine.py     # MA main loop (selection → crossover → mutation → repair)
+│   │           ├── ma_engine.py      # MA main loop (selection → crossover → mutation → repair)
 │   │           ├── initialization.py # Population initialization strategies
 │   │           ├── fitness.py        # Fitness evaluation & distance matrix
 │   │           ├── response_builder.py # Build API response from solution
@@ -76,7 +76,7 @@ TOPTW-HybridGA/
 │   └── experiments/
 │       ├── benchmark_runner.py       # Batch experiment runner
 │       ├── generate_extended_data.py # Generate category & price data
-│       ├── exp1_benchmark.py         # Exp1: HGA vs Labadie GVNS (2012)
+│       ├── exp1_benchmark.py         # Exp1: MA vs Labadie GVNS (2012)
 │       ├── exp2_personalization.py   # Exp2: Personalization value
 │       ├── exp3_budget_impact.py     # Exp3: Budget constraint impact
 │       ├── exp4_ablation_repair.py   # Exp4: Ablation study

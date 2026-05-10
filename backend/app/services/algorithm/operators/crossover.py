@@ -1,11 +1,11 @@
 """
-Toán tử lai ghép — Order Crossover (OX1).
+Crossover Operators - Order Crossover (OX1).
 
 Nguyên tắc "Depot-Safe":
   Toán tử CHỈ thao tác trên "interior" = route[1:-1].
   Depot được gắn lại sau khi xử lý xong.
 
-Tham chiếu: Davis (1985) — "Applying adaptive algorithms to epistatic domains."
+Reference: Davis (1985) - "Applying adaptive algorithms to epistatic domains."
 """
 
 import random
