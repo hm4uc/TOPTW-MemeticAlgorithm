@@ -120,7 +120,7 @@ def _insertion_mutation(
     user_prefs: UserPreferences,
 ) -> tuple[Individual, bool]:
     """
-    ★ INSERTION MUTATION — Toán tử mở rộng route ★
+     INSERTION MUTATION — Toán tử mở rộng route 
 
     Tìm POI chưa ghé thăm, thử chèn theo thứ tự tăng dần cost_increase.
     Không chỉ thử 1 vị trí "best" duy nhất: nếu vị trí tốt nhất vi phạm constraint,

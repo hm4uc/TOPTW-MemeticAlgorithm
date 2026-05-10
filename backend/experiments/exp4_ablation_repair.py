@@ -1,13 +1,13 @@
 """
 Thí nghiệm 4: Ablation Study — Smart Repair & Local Search.
 
-★ Mục tiêu:
-  Chứng minh "trái tim" của HGA — Smart Repair + Greedy Refill — là thành phần
+ Mục tiêu:
+  Chứng minh "trái tim" của MA — Smart Repair + Greedy Refill — là thành phần
   THIẾT YẾU giúp thuật toán xử lý vi phạm Time Window hiệu quả.
 
-★ CHIẾN LƯỢC:
+ CHIẾN LƯỢC:
   So sánh 3 variants:
-    1. full_hga         — Đầy đủ (Smart Repair + Greedy Refill)
+    1. full_ma          — Đầy đủ (Smart Repair + Greedy Refill)
     2. no_smart_repair  — Tắt Smart Repair → dùng Simple Repair (xóa cuối)
                           → Repair vẫn hoạt động nhưng kém thông minh
     3. no_local_search  — Tắt CẢ Repair lẫn Refill
@@ -15,9 +15,9 @@ Thí nghiệm 4: Ablation Study — Smart Repair & Local Search.
                           → Thuật toán phải HOÀN TOÀN dựa vào GA operators
 
   Output kỳ vọng:
-    • full_hga hội tụ NHANH hơn + score CAO hơn hẳn
+    • full_ma hội tụ NHANH hơn + score CAO hơn hẳn
     • no_local_search bị mắc kẹt ở local optima (đường cong hội tụ lẹt đẹt)
-    • Feasibility Rate: full_hga ≈ 100%, no_local_search << 100%
+    • Feasibility Rate: full_ma  100%, no_local_search << 100%
 
 Usage:
     cd backend
@@ -35,9 +35,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from experiments.benchmark_runner import run_batch, create_fixed_prefs, parse_instances_arg
 
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 #  Cấu hình
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 INSTANCES = ["C101", "C201", "R101", "R201", "RC101", "RC201"]
 NUM_RUNS = 5
 OUTPUT_DIR = "experiments/results/exp4_ablation_repair"
@@ -51,11 +51,11 @@ BKS = {
     "R201": 797, "RC101": 219, "RC201": 795,
 }
 
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 #  Ablation Variants
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 ABLATION_VARIANTS = {
-    "full_hga": {},
+    "full_ma": {},
     # Tắt Smart Repair → dùng Simple Repair (xóa cuối thay vì xóa POI kém nhất)
     # Greedy Refill vẫn hoạt động bình thường
     "no_smart_repair": {"use_smart_repair": False},
@@ -88,11 +88,11 @@ def main():
 
     total_runs = args.num_runs * len(instances) * len(ABLATION_VARIANTS)
     print("=" * 76)
-    print("  THÍ NGHIỆM 4: ABLATION STUDY — SMART REPAIR & LOCAL SEARCH")
+    print("  EXPERIMENT 4: ABLATION STUDY - SMART REPAIR & LOCAL SEARCH")
     print(f"  Instances: {instances}")
     print(f"  Variants: {list(ABLATION_VARIANTS.keys())}")
-    print(f"  Runs/variant/instance: {args.num_runs}")
-    print(f"  Tổng số runs: {total_runs}")
+    print(f"  Runs per variant per instance: {args.num_runs}")
+    print(f"  Total runs: {total_runs}")
     print("=" * 76)
 
     # all_results[variant] = {instance: df}
@@ -120,11 +120,11 @@ def main():
             )
             all_results[variant_name][inst] = df
 
-    # ══════════════════════════════════════════════════════════════════════════
+    # 
     #  Bảng 1: Per-Instance Normalized Score
-    # ══════════════════════════════════════════════════════════════════════════
+    # 
     print(f"\n\n{'=' * 120}")
-    print("  BẢNG 1: NORMALIZED SCORE PER-INSTANCE (% of BKS)")
+    print("  TABLE 1: NORMALIZED SCORE PER-INSTANCE (% of BKS)")
     print(f"{'=' * 120}")
 
     print(f"  {'Variant':<22} {'Overall%':>9} {'±Std':>8} "
@@ -155,7 +155,7 @@ def main():
         avg_time = float(pd.Series(time_vals).mean())
         avg_gens = float(pd.Series(gen_vals).mean())
 
-        if variant_name == "full_hga":
+        if variant_name == "full_ma":
             baseline_norm = avg_norm
             diff_str = "baseline"
         else:
@@ -177,7 +177,7 @@ def main():
             **{f"Norm_{inst}": round(per_inst[inst], 2) for inst in instances},
         })
 
-        # ── Thu thập convergence data cho so sánh ──────────────────────────
+        # - Thu thập convergence data cho so sánh -
         all_best_per_gen: dict[int, list[float]] = {}
         for inst, df in dfs.items():
             bks = BKS[inst]
@@ -193,11 +193,11 @@ def main():
 
         convergence_data[variant_name] = all_best_per_gen
 
-    # ══════════════════════════════════════════════════════════════════════════
+    # 
     #  Bảng 2: Convergence Comparison Summary
-    # ══════════════════════════════════════════════════════════════════════════
+    # 
     print(f"\n\n{'=' * 90}")
-    print("  BẢNG 2: CONVERGENCE COMPARISON (Norm Score at key generations)")
+    print("  TABLE 2: CONVERGENCE COMPARISON (Norm Score at key generations)")
     print(f"{'=' * 90}")
 
     key_gens = [1, 5, 10, 25, 50]
@@ -217,14 +217,14 @@ def main():
                 row += f" {'N/A':>8}"
         print(row)
 
-    # ══════════════════════════════════════════════════════════════════════════
+    # 
     #  Lưu results
-    # ══════════════════════════════════════════════════════════════════════════
+    # 
     summary_df = pd.DataFrame(summary_rows)
     os.makedirs("experiments/results/summary", exist_ok=True)
     out_path = "experiments/results/summary/exp4_ablation_repair.csv"
     summary_df.to_csv(out_path, index=False)
-    print(f"\n  📄 Summary saved to: {out_path}")
+    print(f"\n   Summary saved to: {out_path}")
 
     # Lưu convergence data dạng CSV
     conv_rows = []
@@ -241,7 +241,7 @@ def main():
     conv_path = os.path.join(args.output_dir, "convergence_comparison.csv")
     os.makedirs(args.output_dir, exist_ok=True)
     conv_df.to_csv(conv_path, index=False)
-    print(f"  📄 Convergence data saved to: {conv_path}")
+    print(f"   Convergence data saved to: {conv_path}")
 
 
 if __name__ == "__main__":

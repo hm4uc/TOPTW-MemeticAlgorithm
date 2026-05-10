@@ -27,7 +27,7 @@ import matplotlib.patches as mpatches
 from matplotlib.artist import Artist
 from matplotlib.lines import Line2D
 
-# ── Font & DPI ─────────────────────────────────────────────────────────────────
+# - Font & DPI -
 matplotlib.rcParams.update({
     "font.family":      "DejaVu Sans",
     "figure.dpi":       150,
@@ -40,7 +40,7 @@ matplotlib.rcParams.update({
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-# ── Unified design tokens ───────────────────────────────────────────────────────
+# - Unified design tokens -
 TITLE_SIZE   = 15
 SUBTITLE_SIZE= 13
 LABEL_SIZE   = 11
@@ -89,9 +89,9 @@ def _savefig(path: str):
     print(f"  OK  {path}")
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 #  1. Convergence Curve  (multi-run shaded band)
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 def plot_convergence(csv_path: str, output_name: str = "convergence"):
     """
     Vẽ convergence curve tốt hơn:
@@ -158,9 +158,9 @@ def plot_convergence(csv_path: str, output_name: str = "convergence"):
     _savefig(os.path.join(CHART_DIR, f"{output_name}.png"))
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 #  2. Route Scatter Plot  (colored by POI category)
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 def plot_route_comparison(results_dir: str = "experiments/results/exp2_personalization"):
     """
     Cải tiến:
@@ -265,9 +265,9 @@ def plot_route_comparison(results_dir: str = "experiments/results/exp2_personali
     _savefig(os.path.join(CHART_DIR, "route_comparison.png"))
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 #  3. Personalization Bar Chart  (merged C101+C201, better layout)
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 def plot_personalization_bars(results_dir: str = "experiments/results/exp2_personalization"):
     """
     Cải tiến:
@@ -309,7 +309,7 @@ def plot_personalization_bars(results_dir: str = "experiments/results/exp2_perso
 
     fig, axes = plt.subplots(1, 2, figsize=(17, 7))
 
-    # ── Left: Stacked % Bar ────────────────────────────────────────────────────
+    # - Left: Stacked % Bar -
     ax1     = axes[0]
     x       = np.arange(len(profiles))
     bottom  = np.zeros(len(profiles))
@@ -341,7 +341,7 @@ def plot_personalization_bars(results_dir: str = "experiments/results/exp2_perso
         ax1.text(i, 102.5, f"Score\n{s:.0f}", ha="center", va="bottom",
                  fontsize=7.5, color="#333333", style="italic")
 
-    # ── Right: Heatmap-style grouped absolute bar ──────────────────────────────
+    # - Right: Heatmap-style grouped absolute bar -
     ax2   = axes[1]
     width = 0.14
     n_prof = len(profile_names)
@@ -367,9 +367,9 @@ def plot_personalization_bars(results_dir: str = "experiments/results/exp2_perso
     _savefig(os.path.join(CHART_DIR, "personalization_bars.png"))
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 #  4. Sensitivity Analysis  (dual-axis, std band, default marker)
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 def plot_sensitivity(results_dir: str = "experiments/results/exp5_sensitivity"):
     """
     Cải tiến:
@@ -392,7 +392,7 @@ def plot_sensitivity(results_dir: str = "experiments/results/exp5_sensitivity"):
     defaults = {"population_size": 100, "mutation_rate": 0.3,
                 "tournament_k": 3, "stagnation_limit": 25}
 
-    # ── Pre-collect all data to find global scales ───────────────────────────
+    # - Pre-collect all data to find global scales -
     all_data = {}
     global_max_time = 0
 
@@ -503,9 +503,9 @@ def plot_sensitivity(results_dir: str = "experiments/results/exp5_sensitivity"):
 
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 #  5b. Budget Impact — Category Distribution & Score (Exp3)
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 def plot_exp3_budget_bars(
     summary_csv: str = "experiments/results/summary/exp3_budget_impact.csv",
 ):
@@ -532,7 +532,7 @@ def plot_exp3_budget_bars(
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6), gridspec_kw={"width_ratios": [3, 2]})
 
-    # ── LEFT: Stacked Bar — Category Distribution ────────────────────────
+    # - LEFT: Stacked Bar — Category Distribution -
     x = np.arange(len(df))
     bar_width = 0.55
     bottom = np.zeros(len(df))
@@ -558,7 +558,7 @@ def plot_exp3_budget_bars(
                framealpha=0.9, edgecolor="#CCCCCC")
     ax1.set_ylim(0, 105)
 
-    # ── RIGHT: Score & POIs Grouped Bar ──────────────────────────────────
+    # - RIGHT: Score & POIs Grouped Bar -
     x2 = np.arange(len(df))
     w = 0.3
 
@@ -606,9 +606,9 @@ def plot_exp3_budget_bars(
 
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 #  5. Ablation Study — Convergence Comparison (Exp4)
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 def plot_exp4_ablation_convergence(
     conv_csv: str = "experiments/results/exp4_ablation_repair/convergence_comparison.csv",
 ):
@@ -624,7 +624,7 @@ def plot_exp4_ablation_convergence(
     df = pd.read_csv(conv_csv)
 
     variant_style = {
-        "full_hga":         {"color": PALETTE["green"],  "label": "Full HGA",         "ls": "-"},
+        "full_ma":          {"color": PALETTE["green"],  "label": "Full MA",          "ls": "-"},
         "no_smart_repair":  {"color": PALETTE["orange"], "label": "No Smart Repair",  "ls": "--"},
         "no_local_search":  {"color": PALETTE["red"],    "label": "No Local Search",  "ls": "-."},
     }
@@ -682,9 +682,9 @@ def plot_exp4_ablation_convergence(
     _savefig(out)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 #  MAIN
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 def main():
     print("=" * 62)
     print("  PLOT CHARTS FOR THESIS REPORT  (improved version)")

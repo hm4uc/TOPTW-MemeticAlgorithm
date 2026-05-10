@@ -15,7 +15,7 @@ Nguyên tắc "Depot-Safe":
   Tất cả các toán tử GA CHỈ tác động lên phân đoạn "interior" = route[1:-1].
   Depot được gắn lại sau khi xử lý.
 
-★ ABLATION FLAGS ★
+ ABLATION FLAGS
   Hỗ trợ bật/tắt từng thành phần để đánh giá (Ablation Study).
 """
 
@@ -70,7 +70,7 @@ class MemeticAlgorithm:
         user_prefs: UserPreferences,
         pois: Optional[List[POI]] = None,
         instance_name: str = "C101",
-        # ── Ablation Flags ──────────────────────────────────────────
+        # - Ablation Flags -
         use_smart_repair: bool = True,        # False → Simple Repair (xóa cuối)
         use_local_search: bool = True,        # False → tắt Repair+Refill hoàn toàn
         use_insertion_mutation: bool = True,   # False → chỉ 2-opt + Swap
@@ -78,7 +78,7 @@ class MemeticAlgorithm:
         use_heuristic_init: bool = True,       # False → 100% Random Init
         use_diversity_check: bool = True,      # False → không check duplicate
         use_adaptive_mutation: bool = USE_ADAPTIVE_MUTATION_DEFAULT,
-        # ── Tunable Parameters ──────────────────────────────────────
+        # - Tunable Parameters -
         population_size: int = POPULATION_SIZE,
         mutation_rate: float = DEFAULT_MUTATION_RATE,
         generations: int = DEFAULT_GENERATIONS,
@@ -87,15 +87,15 @@ class MemeticAlgorithm:
     ):
         self.user_prefs = user_prefs
 
-        # ── Load dữ liệu ────────────────────────────────────────────────────
+        # - Load dữ liệu -
         self.pois = pois if pois is not None else load_solomon_instance(instance_name)
 
-        # ── Pre-compute Distance Matrix ──────────────────────────────────────
+        # - Pre-compute Distance Matrix -
         build_distance_matrix(self.pois)
         self.depot: Optional[POI] = next((p for p in self.pois if p.id == 0), None)
         self.poi_map = {p.id: p for p in self.pois}
 
-        # ── Ablation Flags ───────────────────────────────────────────────────
+        # - Ablation Flags -
         self.use_smart_repair = use_smart_repair
         self.use_local_search = use_local_search
         self.use_insertion_mutation = use_insertion_mutation
@@ -104,7 +104,7 @@ class MemeticAlgorithm:
         self.use_diversity_check = use_diversity_check
         self.use_adaptive_mutation = use_adaptive_mutation
 
-        # ── GA Parameters ────────────────────────────────────────────────────
+        # - GA Parameters -
         self.population_size = population_size
         self.mutation_rate = mutation_rate
         self.generations = generations
@@ -113,10 +113,10 @@ class MemeticAlgorithm:
         self.tournament_k = tournament_k
         self.population: list[Individual] = []
 
-        # ── Wait penalty weight (configurable for ablation) ──────────────────
+        # - Wait penalty weight (configurable for ablation) -
         self.wait_penalty_weight = PENALTY_WAIT if use_wait_penalty else 0.0
 
-        # ── Results Tracking ─────────────────────────────────────────────────
+        # - Results Tracking -
         self.convergence_log: list[dict] = []
         self.actual_gens: int = 0
         self.best_individual: Optional[Individual] = None
@@ -246,15 +246,15 @@ class MemeticAlgorithm:
             "insertion": p_insert / total,
         }
 
-    # ══════════════════════════════════════════════════════════════════════════
+    # 
     #  Step 1: Population Initialization
-    # ══════════════════════════════════════════════════════════════════════════
+    # 
     def _initialize_population(self) -> list[Individual]:
         self.population = initialize_population(
             self.pois, self.user_prefs,
             use_heuristic_init=self.use_heuristic_init,
         )
-        # ★ Repair + Greedy Refill cho MỖI cá thể khởi tạo
+        #  Repair + Greedy Refill cho MỖI cá thể khởi tạo
         for i, ind in enumerate(self.population):
             if self.use_local_search:
                 ind = repair(ind, self.user_prefs, self.use_smart_repair)
@@ -268,15 +268,15 @@ class MemeticAlgorithm:
         print(f"      Worst fitness = {self.population[-1].fitness:.2f}")
         return self.population
 
-    # ══════════════════════════════════════════════════════════════════════════
+    # 
     #  Step 2: Fitness Evaluation
-    # ══════════════════════════════════════════════════════════════════════════
+    # 
     def _evaluate_fitness(self, individual: Individual) -> float:
         return calculate_fitness(individual, self.user_prefs, self.wait_penalty_weight)
 
-    # ══════════════════════════════════════════════════════════════════════════
+    # 
     #  Step 3: Parent Selection — Tournament
-    # ══════════════════════════════════════════════════════════════════════════
+    # 
     def _select_parents(
         self, population: list[Individual]
     ) -> tuple[Individual, Individual]:
@@ -298,9 +298,9 @@ class MemeticAlgorithm:
 
         return p1, p2
 
-    # ══════════════════════════════════════════════════════════════════════════
+    # 
     #  Diversity Check (Chống đồng huyết)
-    # ══════════════════════════════════════════════════════════════════════════
+    # 
     def _is_duplicate(self, child: Individual, population: list[Individual]) -> bool:
         """Kiểm tra `child` có trùng với bất kỳ cá thể nào trong `population`."""
         child_ids = frozenset(p.id for p in child.route[1:-1])
@@ -313,7 +313,7 @@ class MemeticAlgorithm:
         """
         Tạo 1 cá thể mới khi phát hiện bản sao.
 
-        ★ Cải tiến: Thay vì random thuần (fitness rất thấp), ta:
+         Cải tiến: Thay vì random thuần (fitness rất thấp), ta:
           1. Tạo random cơ bản
           2. Repair nếu vi phạm
           3. Greedy Refill để lấp đầy route → chất lượng cao hơn nhiều
@@ -325,21 +325,21 @@ class MemeticAlgorithm:
         calculate_fitness(ind, self.user_prefs, self.wait_penalty_weight)
         return ind
 
-    # ══════════════════════════════════════════════════════════════════════════
+    # 
     #  Main Loop — Early Stopping + Convergence Logging
-    # ══════════════════════════════════════════════════════════════════════════
+    # 
     def run(self) -> OptimizationResponse:
         """
         Chạy vòng lặp tiến hóa chính của Thuật toán Memetic.
 
-        ★ EARLY STOPPING ★
+         EARLY STOPPING
           Nếu best fitness không cải thiện (>= threshold) trong
           `stagnation_limit` thế hệ liên tiếp → dừng sớm.
 
-        ★ CONVERGENCE LOGGING ★
+         CONVERGENCE LOGGING
           Lưu metrics mỗi thế hệ vào self.convergence_log để vẽ đồ thị.
 
-        ★ ABLATION FLAGS ★
+         ABLATION FLAGS
           Các toán tử có thể tắt/bật qua flags trong __init__.
         """
         start_time = time.perf_counter()
@@ -364,7 +364,7 @@ class MemeticAlgorithm:
             insertion_attempts = 0
             insertion_success = 0
 
-            # ── Tạo con cái ──────────────────────────────────────────────────
+            # - Tạo con cái -
             children: list[Individual] = []
             while len(children) < self.population_size:
                 p1, p2 = self._select_parents(self.population)
@@ -389,7 +389,7 @@ class MemeticAlgorithm:
 
             self._update_insert_fail_rate(insertion_attempts, insertion_success)
 
-            # ── Merged Replacement — giữ best từ (parents + children) ────────
+            # - Merged Replacement — giữ best từ (parents + children) -
             merged = list(self.population) + children
             merged.sort(key=lambda ind: ind.fitness, reverse=True)
 
@@ -410,7 +410,7 @@ class MemeticAlgorithm:
             new_population.sort(key=lambda ind: ind.fitness, reverse=True)
             self.population = new_population
 
-            # ── Cập nhật Best Ever + Early Stopping ──────────────────────────
+            # - Cập nhật Best Ever + Early Stopping -
             improvement = self.population[0].fitness - best_ever.fitness
             if improvement > self.improvement_threshold:
                 best_ever = self.population[0]
@@ -418,7 +418,7 @@ class MemeticAlgorithm:
             else:
                 gens_without_improvement += 1
 
-            # ── Enhanced Logging ──────────────────────────────────────────────
+            # - Enhanced Logging -
             all_fitnesses = sorted([ind.fitness for ind in self.population], reverse=True)
             best_fit = all_fitnesses[0]
             avg_fit = sum(all_fitnesses) / len(all_fitnesses)
@@ -441,7 +441,7 @@ class MemeticAlgorithm:
                 duplicates_replaced=duplicates_replaced,
             )
 
-            # ── Early Stopping Check ──────────────────────────────────────────
+            # - Early Stopping Check -
             if gens_without_improvement >= self.stagnation_limit:
                 print(
                     f"\n[MA] ** EARLY STOPPING ** "
@@ -453,7 +453,7 @@ class MemeticAlgorithm:
 
         elapsed = time.perf_counter() - start_time
 
-        # ── Store results ─────────────────────────────────────────────────────
+        # - Store results -
         self.actual_gens = actual_gens
         self.best_individual = best_ever
 

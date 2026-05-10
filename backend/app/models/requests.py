@@ -84,9 +84,9 @@ class UserPreferences(BaseModel):
         )
     )
 
-    # ─────────────────────────────────────────────────────────────────────────
+    # -
     #  Field Validators
-    # ─────────────────────────────────────────────────────────────────────────
+    # -
 
     @field_validator('instance_name')
     @classmethod
@@ -139,9 +139,9 @@ class UserPreferences(BaseModel):
                 )
         return v
 
-    # ─────────────────────────────────────────────────────────────────────────
+    # -
     #  Model Validator  (cross-field validation)
-    # ─────────────────────────────────────────────────────────────────────────
+    # -
 
     @model_validator(mode='after')
     def validate_time_range(self) -> 'UserPreferences':
@@ -166,13 +166,13 @@ class UserPreferences(BaseModel):
 
         return self
 
-    # ─────────────────────────────────────────────────────────────────────────
+    # -
     #  Chuyển đổi đơn vị: Giờ (user input) → Phút (Solomon time units)
-    # ─────────────────────────────────────────────────────────────────────────
+    # -
     #  Solomon benchmark dùng đơn vị PHÚT cho tất cả time fields:
     #    READY TIME, DUE DATE, SERVICE TIME, travel_time (Euclidean distance).
     #  User nhập giờ (8.0 = 8AM, 17.0 = 5PM) → cần nhân 60 để khớp đơn vị.
-    # ─────────────────────────────────────────────────────────────────────────
+    # -
 
     @property
     def start_time_minutes(self) -> float:
@@ -189,8 +189,8 @@ class UserPreferences(BaseModel):
         """
         Chuyển đổi số sao → trọng số float ĐÃ CHUẨN HÓA để thuật toán sử dụng.
 
-        ★ NORMALIZATION (Edge Case 2) ★
-          Khi tất cả category có cùng số sao (VD: toàn bộ 1★ hoặc toàn bộ 5★),
+         NORMALIZATION (Edge Case 2) 
+          Khi tất cả category có cùng số sao (VD: toàn bộ 1 hoặc toàn bộ 5),
           raw weights sẽ giống nhau → thuật toán không phân biệt được category.
 
           Giải pháp: Normalize trọng số sao cho:

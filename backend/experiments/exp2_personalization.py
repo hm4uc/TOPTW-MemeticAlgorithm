@@ -1,7 +1,7 @@
 """
 Thí nghiệm 2: Đánh giá Giá trị Cá nhân hóa (Personalization Value).
 
-★ CHIẾN LƯỢC ★
+ CHIẾN LƯỢC 
   • Chạy trên RC201 (Mixed TW — nhiều POI, đa dạng)
   • Budget nới rộng (2_000_000) → isolate preference from financial constraints
   • 5 profiles: baseline, history_buff, foodie, explorer, shopper
@@ -22,9 +22,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from experiments.benchmark_runner import run_batch, INSTANCE_CONFIGS, parse_instances_arg
 from app.models.requests import UserPreferences
 
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 #  Cấu hình
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 INSTANCE = "RC201"
 NUM_RUNS = 10
 OUTPUT_DIR = "experiments/results/exp2_personalization"
@@ -84,7 +84,7 @@ def main():
         raise SystemExit(f"\nLỗi tham số --instances: {e}\n")
 
     print("=" * 70)
-    print("  THÍ NGHIỆM 2: ĐÁNH GIÁ GIÁ TRỊ CÁ NHÂN HÓA")
+    print("  EXPERIMENT 2: PERSONALIZATION VALUE EVALUATION")
     print(f"  Instances: {instances} | Budget: {BUDGET:,}")
     print(f"  Profiles: {len(USER_PROFILES)} | Runs/profile/instance: {args.num_runs}")
     print("=" * 70)
@@ -118,13 +118,13 @@ def main():
             )
             all_results[profile_name].append(df)
 
-    # ── Bảng tổng hợp ───────────────────────────────────────────────────────
+    # - Bảng tổng hợp -
     cat_cols = ["cat_history_culture", "cat_nature_parks", "cat_food_drink",
                 "cat_shopping", "cat_entertainment", "cat_nightlife_wellness"]
     cat_short = ["Hist", "Nat", "Food", "Shop", "Ent", "Night"]
 
     print(f"\n\n{'=' * 110}")
-    print("  BẢNG TỔNG HỢP — PHÂN BỐ CATEGORY THEO PROFILE (Số lượng + Tỷ lệ %)")
+    print("  SUMMARY TABLE - CATEGORY DISTRIBUTION BY PROFILE (Count + %)")
     print(f"{'=' * 110}")
 
     # Header
@@ -135,7 +135,7 @@ def main():
         header_parts.append(f"{s:>5}")
         header_parts.append(f"{'(%)':>5}")
     print("".join(header_parts))
-    print("─" * 110)
+    print("-" * 110)
 
     for name, df_list in all_results.items():
         if not df_list:
@@ -163,8 +163,8 @@ def main():
             row_parts.append(f"{pct:4.0f}%")
         print("".join(row_parts))
 
-    print(f"\n  ★ Instances: {instances} — Budget: {BUDGET:,}")
-    print(f"  ★ Tỷ lệ % = (Số POI danh mục / Tổng POI trong route) × 100")
+    print(f"\n   Instances: {instances} - Budget: {BUDGET:,}")
+    print(f"   % Ratio = (Category POIs / Total POIs in route) * 100")
 
 
 if __name__ == "__main__":

@@ -17,19 +17,19 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from experiments.benchmark_runner import run_batch, create_fixed_prefs, parse_instances_arg
 
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 #  Cấu hình
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 INSTANCES = ["C101", "C201", "R101", "R201", "RC101", "RC201"]
 NUM_RUNS = 30
 OUTPUT_DIR = "experiments/results/exp1_benchmark"
 FAIR_BENCHMARK_FLAGS = {"use_wait_penalty": False}
 
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 #  Best-Known Solutions từ Labadie (2012)
 #  ĐỌC TỪ PAPER labadie2012.pdf → Section "Computational Results"
 #  Điền giá trị BKS (Total Score) cho từng instance.
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 LABADIE_BKS = {
     "C101":  320,
     "C201":  870,
@@ -72,10 +72,10 @@ def main():
         raise SystemExit(f"\nLỗi tham số --instances: {e}\n")
 
     print("=" * 70)
-    print("  THÍ NGHIỆM 1: SO SÁNH MA vs LABADIE (2012)")
-    print("  Chế độ: Fixed Scores | Budget = ∞")
+    print("  EXPERIMENT 1: MA vs LABADIE (2012)")
+    print("  Mode: Fixed Scores | Budget = Unlimited")
     print(f"  Instances: {instances}")
-    print(f"  Số lần chạy mỗi instance: {args.num_runs}")
+    print(f"  Runs per instance: {args.num_runs}")
     print("=" * 70)
 
     all_results = {}
@@ -97,9 +97,9 @@ def main():
         )
         all_results[inst] = df
 
-    # ── Bảng tổng hợp cuối cùng ─────────────────────────────────────────────
+    # --- FINAL SUMMARY TABLE ---
     print(f"\n\n{'=' * 110}")
-    print("  BẢNG TỔNG HỢP - SO SÁNH MA vs LABADIE GVNS (2012)")
+    print("  FINAL SUMMARY - MA vs LABADIE GVNS (2012)")
     print(f"{'=' * 110}")
     print(f"{'Instance':<10} {'BKS':>6} | {'GVNS Best':>9} {'GVNS Avg':>9} {'GVNS Gap%':>9} {'GVNS T(s)':>9} | "
           f"{'MA Best':>9} {'MA Avg':>9} {'MA Std':>8} {'MA Gap%':>9} {'MA T(s)':>9}")

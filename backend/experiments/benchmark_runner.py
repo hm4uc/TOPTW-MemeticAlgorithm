@@ -17,7 +17,7 @@ import json
 import argparse
 import pandas as pd
 
-# ── Thêm backend vào path ────────────────────────────────────────────────────
+# - Thêm backend vào path -
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from app.services.data_loader import load_solomon_instance
@@ -25,9 +25,9 @@ from app.services.algorithm.ma_engine import MemeticAlgorithm
 from app.models.requests import UserPreferences
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 #  Depot Time Windows cho từng Instance
-# ══════════════════════════════════════════════════════════════════════════════
+# 
 INSTANCE_CONFIGS = {
     "C101":  {"depot_due": 1236, "service_time": 90},
     "C201":  {"depot_due": 3390, "service_time": 90},
@@ -86,7 +86,7 @@ def create_fixed_prefs(instance_name: str) -> UserPreferences:
     """
     Tạo UserPreferences cho chế độ Fixed Score (so sánh Labadie).
 
-    Tất cả interests = 3★ → weight = 1.0 sau normalization
+    Tất cả interests = 3 → weight = 1.0 sau normalization
     → score = base_score × 1.0 = DEMAND gốc trong Solomon.
     Budget = vô hạn (Labadie không có budget constraint).
     Time window = depot time window.
@@ -210,7 +210,7 @@ def run_batch(
     filepath = os.path.join(output_dir, filename)
     df.to_csv(filepath, index=False)
 
-    # ── Print Summary ────────────────────────────────────────────────────────
+    # - Print Summary -
     print(f"\n{'=' * 60}")
     print(f"  SUMMARY — {instance_name} [{label}] ({num_runs} runs)")
     print(f"{'=' * 60}")
@@ -233,7 +233,7 @@ def run_batch(
         for col in cat_cols:
             print(f"    {col}: {df[col].mean():.1f}")
 
-    print(f"\n  📄 Saved to: {filepath}")
+    print(f"\n   Saved to: {filepath}")
     return df
 
 
