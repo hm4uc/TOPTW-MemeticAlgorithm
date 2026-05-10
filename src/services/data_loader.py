@@ -11,7 +11,7 @@ import copy
 import random
 from pathlib import Path
 from typing import List
-from app.models.domain import POI
+from models.domain import POI
 
 # --- DANH SÁCH CATEGORY CHUẨN (6 loại) ---
 CATEGORIES = [
@@ -44,8 +44,8 @@ CATEGORY_PRICE_TIERS: dict[str, list[float]] = {
 _INSTANCE_CACHE: dict[str, List[POI]] = {}
 AVAILABLE_INSTANCES = ("C101", "C201", "R101", "R201", "RC101", "RC201")
 
-# backend/app/services/data_loader.py -> parents[2] = backend/
-_BACKEND_DIR = Path(__file__).resolve().parents[2]
+# src/services/data_loader.py -> parents[1] = src/
+_BACKEND_DIR = Path(__file__).resolve().parents[1]
 _SOLOMON_DIR = _BACKEND_DIR / "data" / "solomon_instances"
 _EXTENDED_DIR = _SOLOMON_DIR / "extended"
 

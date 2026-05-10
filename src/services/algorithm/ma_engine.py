@@ -23,26 +23,28 @@ import random
 import time
 from typing import Optional, List
 
-from app.models.domain import POI, Individual
-from app.models.requests import UserPreferences
-from app.models.responses import OptimizationResponse
-from app.services.data_loader import load_solomon_instance
-from app.services.algorithm.initialization import (
+from models.domain import POI, Individual
+from models.requests import UserPreferences
+from models.responses import OptimizationResponse
+from services.data_loader import load_solomon_instance
+from services.algorithm.initialization import (
     initialize_population,
-    _create_random_individual,
+    _create_random_individual
 )
-from app.services.algorithm.fitness import (
+from services.algorithm.fitness import (
     calculate_fitness,
-    build_distance_matrix,
+    check_constraints,
+    get_travel_time,
+    build_distance_matrix
 )
-from app.services.algorithm.operators import (
+from services.algorithm.operators import (
     crossover_ox1,
     mutate,
     repair,
-    greedy_refill,
+    greedy_refill
 )
-from app.services.algorithm.response_builder import build_response
-from app.core.config import (
+from services.algorithm.response_builder import build_response
+from core.config import (
     POPULATION_SIZE,
     PENALTY_WAIT,
     DEFAULT_MUTATION_RATE,

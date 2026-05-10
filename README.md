@@ -45,46 +45,20 @@ The solver implements a **Memetic Algorithm (MA)** - a Genetic Algorithm hybridi
 
 ```
 TOPTW-MemeticAlgorithm/
-├── backend/
-│   ├── app/
-│   │   ├── main.py                     # FastAPI entry point
-│   │   ├── api/
-│   │   │   └── routes.py              # POST /api/optimize endpoint
-│   │   ├── core/
-│   │   │   └── config.py             # Central configuration & GA parameters
-│   │   ├── models/
-│   │   │   ├── domain.py             # POI, Individual data classes
-│   │   │   ├── requests.py           # UserPreferences (Pydantic)
-│   │   │   └── responses.py          # OptimizationResponse (Pydantic)
-│   │   └── services/
-│   │       ├── data_loader.py        # Solomon instance loader & cache
-│   │       └── algorithm/
-│   │           ├── ma_engine.py      # MA main loop (selection → crossover → mutation → repair)
-│   │           ├── initialization.py # Population initialization strategies
-│   │           ├── fitness.py        # Fitness evaluation & distance matrix
-│   │           ├── response_builder.py # Build API response from solution
-│   │           └── operators/
-│   │               ├── crossover.py  # Order Crossover (OX1)
-│   │               ├── mutation.py   # 2-opt, Swap, Insertion mutation
-│   │               └── repair.py    # Smart Repair + Greedy Refill
-│   ├── data/
-│   │   └── solomon_instances/        # Solomon benchmark datasets (6 instances)
-│   │       ├── C101.csv, C201.csv    # Clustered instances
-│   │       ├── R101.csv, R201.csv    # Random instances
-│   │       ├── RC101.csv, RC201.csv  # Mixed instances
-│   │       └── extended/             # Extended CSVs with category & price
-│   └── experiments/
-│       ├── benchmark_runner.py       # Batch experiment runner
-│       ├── generate_extended_data.py # Generate category & price data
-│       ├── exp1_benchmark.py         # Exp1: MA vs Labadie GVNS (2012)
-│       ├── exp2_personalization.py   # Exp2: Personalization value
-│       ├── exp3_budget_impact.py     # Exp3: Budget constraint impact
-│       ├── exp4_ablation_repair.py   # Exp4: Ablation study
-│       ├── exp5_sensitivity.py       # Exp5: Parameter sensitivity
-│       ├── analyze_results.py        # Auto-generate summary CSVs
-│       └── plot_charts.py            # Publication-ready charts
-├── LICENSE
-└── README.md
+├── src/
+│   ├── main.py                     # FastAPI entry point
+│   ├── api/                        # API routes
+│   ├── core/                       # Configurations & Constants
+│   ├── models/                     # Pydantic & Domain models
+│   ├── services/                   # Logic & Data loading
+│   │   ├── algorithm/              # Memetic Algorithm core
+│   │   │   ├── ma_engine.py        # Main loop
+│   │   │   ├── initialization.py   # Init strategies
+│   │   │   ├── fitness.py          # Fitness & Constraints
+│   │   │   └── operators/          # GA Operators (OX1, 2-opt, Repair)
+│   │   └── data_loader.py          # Solomon instance loader
+│   ├── data/                       # Solomon benchmark datasets
+│   └── experiments/                # Research scripts & Results
 ```
 
 ## API
@@ -124,9 +98,9 @@ Interactive API docs available at `http://localhost:8000/docs` after starting th
 ### Install & Run
 
 ```bash
-cd backend
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+cd src
+uvicorn main:app --reload
 ```
 
 Server runs at `http://localhost:8000`.
@@ -134,7 +108,7 @@ Server runs at `http://localhost:8000`.
 ### Run Experiments
 
 ```bash
-cd backend
+cd src
 
 # Generate extended dataset (category + price)
 py -m experiments.generate_extended_data

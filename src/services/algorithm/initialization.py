@@ -11,10 +11,10 @@ Tổng kích thước quần thể: 100 (cố định).
 import random
 from typing import List
 
-from app.models.domain import POI, Individual
-from app.models.requests import UserPreferences
-from app.core.config import POPULATION_SIZE, HEURISTIC_COUNT, RANDOM_COUNT, RCL_SIZE
-from app.services.algorithm.fitness import (
+from models.domain import POI, Individual
+from models.requests import UserPreferences
+from core.config import POPULATION_SIZE, HEURISTIC_COUNT, RANDOM_COUNT, RCL_SIZE
+from services.algorithm.fitness import (
     get_travel_time,
     try_add_poi,
 )

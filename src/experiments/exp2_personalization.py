@@ -20,7 +20,7 @@ import pandas as pd
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from experiments.benchmark_runner import run_batch, INSTANCE_CONFIGS, parse_instances_arg
-from app.models.requests import UserPreferences
+from models.requests import UserPreferences
 
 # 
 #  Cấu hình

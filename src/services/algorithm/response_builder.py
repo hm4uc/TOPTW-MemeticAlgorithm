@@ -10,10 +10,10 @@ Engine chỉ cần gọi build_response() sau khi kết thúc quá trình tiến
   • Output total_duration → giờ (để user dễ đọc).
 """
 
-from app.models.domain import Individual
-from app.models.requests import UserPreferences
-from app.models.responses import OptimizationResponse, ItineraryItem
-from app.services.algorithm.fitness import get_travel_time
+from models.domain import Individual
+from models.requests import UserPreferences
+from models.responses import OptimizationResponse, ItineraryItem
+from services.algorithm.fitness import get_travel_time
 
 
 def _format_time(minutes: float) -> str:

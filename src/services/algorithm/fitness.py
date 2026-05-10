@@ -2,9 +2,9 @@ import math
 from types import NoneType
 from typing import List, Optional, Any
 
-from app.models.domain import POI
-from app.models.requests import UserPreferences
-from app.core.config import (
+from models.domain import POI
+from models.requests import UserPreferences
+from core.config import (
     PENALTY_LATE_ARRIVAL,
     PENALTY_LATE_RETURN,
     PENALTY_BUDGET,

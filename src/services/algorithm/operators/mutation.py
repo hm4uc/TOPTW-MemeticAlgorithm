@@ -9,9 +9,9 @@ Nguyên tắc "Depot-Safe":
 import random
 from typing import List
 
-from app.models.domain import POI, Individual
-from app.models.requests import UserPreferences
-from app.services.algorithm.fitness import get_travel_time, check_constraints
+from models.domain import POI, Individual
+from models.requests import UserPreferences
+from services.algorithm.fitness import get_travel_time, check_constraints
 
 
 def mutate(

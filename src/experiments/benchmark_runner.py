@@ -20,9 +20,9 @@ import pandas as pd
 # - Thêm backend vào path -
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from app.services.data_loader import load_solomon_instance
-from app.services.algorithm.ma_engine import MemeticAlgorithm
-from app.models.requests import UserPreferences
+from services.data_loader import load_solomon_instance
+from services.algorithm.ma_engine import MemeticAlgorithm
+from models.requests import UserPreferences
 
 
 # 

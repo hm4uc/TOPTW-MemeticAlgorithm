@@ -11,7 +11,7 @@ Reference: Davis (1985) - "Applying adaptive algorithms to epistatic domains."
 import random
 from typing import Optional
 
-from app.models.domain import POI, Individual
+from models.domain import POI, Individual
 
 
 def crossover_ox1(

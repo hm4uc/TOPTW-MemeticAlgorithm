@@ -22,5 +22,6 @@ venv/
 Thumbs.db
 .DS_Store
 
-# Scratch / temp scripts
-backend/experiments/scratch_*.py
+# Docs
+*.md
+!README.md

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
-from app.api.routes import router
+from api.routes import router
 
 app = FastAPI(
     title="TOPTW Memetic Algorithm API",

@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException
 import logging
-from app.models.requests import UserPreferences
-from app.models.responses import OptimizationResponse
-from app.services.algorithm.ma_engine import MemeticAlgorithm
-from app.services.data_loader import load_solomon_instance
+from models.requests import UserPreferences
+from models.responses import OptimizationResponse
+from services.algorithm.ma_engine import MemeticAlgorithm
+from services.data_loader import load_solomon_instance
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -85,7 +85,7 @@ async def optimize_itinerary(request: UserPreferences):
                 status_code=400,
                 detail=(
                     f"Không tải được dữ liệu cho instance '{request.instance_name}'. "
-                    "Hãy kiểm tra dữ liệu benchmark trong backend/data/solomon_instances."
+                    "Hãy kiểm tra dữ liệu benchmark trong src/data/solomon_instances."
                 ),
             )
 

@@ -168,7 +168,7 @@ def plot_route_comparison(results_dir: str = "experiments/results/exp2_personali
       - Thêm số thứ tự thăm quan trên mỗi POI
       - Chú thích category rõ ràng hơn trong legend
     """
-    from app.services.data_loader import load_solomon_instance
+    from services.data_loader import load_solomon_instance
 
     instance = "C101"
     try:
