@@ -4,9 +4,9 @@ from starlette.middleware.cors import CORSMiddleware
 from app.api.routes import router
 
 app = FastAPI(
-    title="TOPTW Hybrid GA API",
+    title="TOPTW Memetic Algorithm API",
     description=(
-        "API tối ưu hóa lộ trình du lịch cá nhân hóa dựa trên thuật toán Di truyền Lai (Hybrid GA), "
+        "API tối ưu hóa lộ trình du lịch cá nhân hóa dựa trên Thuật toán Memetic (MA), "
         "giải bài toán Team Orienteering Problem with Time Windows (TOPTW). "
         "Hệ thống tối ưu lộ trình theo sở thích, ngân sách và ràng buộc thời gian của người dùng."
     ),

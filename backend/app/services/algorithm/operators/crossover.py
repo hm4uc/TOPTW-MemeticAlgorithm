@@ -1,5 +1,5 @@
 """
-Crossover Operator — Order Crossover OX1 (Depot-Safe).
+Toán tử lai ghép — Order Crossover (OX1).
 
 Nguyên tắc "Depot-Safe":
   Toán tử CHỈ thao tác trên "interior" = route[1:-1].
@@ -20,12 +20,14 @@ def crossover_ox1(
     depot: POI,
 ) -> Individual:
     """
-    Order Crossover OX1 — chỉ thao tác trên interior (bỏ Depot 2 đầu).
+    Áp dụng Order Crossover (OX1) trên phân đoạn nội thất (interior).
+
+    OX1 là toán tử dựa trên thứ tự, bảo tồn các chuỗi POI từ cha mẹ.
+    Phù hợp cho các bài toán định tuyến vì nó giữ lại cấu trúc lộ trình cục bộ.
 
     Thuật toán:
       1. Cắt ngẫu nhiên đoạn [cut1, cut2] từ parent1 → giữ nguyên vào child.
-      2. Điền phần còn lại theo thứ tự xuất hiện trong parent2 (bỏ qua trùng).
-      3. Gắn lại Depot hai đầu.
+      2. Điền các POI còn lại từ parent2 theo đúng thứ tự xuất hiện của chúng.
 
     Parameters
     ----------

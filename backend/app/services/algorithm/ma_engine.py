@@ -1,22 +1,22 @@
 """
-Hybrid Genetic Algorithm Engine (HGA) — TOPTW Solver
+Engine thuật toán Memetic (MA) — Bộ giải TOPTW
 
-Luồng chính mỗi thế hệ:
-  1. Elitism   – giữ nguyên N cá thể tốt nhất.
-  2. Selection – Tournament Selection chọn cặp cha-mẹ.
+Vòng lặp tiến hóa chính cho mỗi thế hệ:
+  1. Elitism   – giữ lại N cá thể tốt nhất.
+  2. Selection – Tournament Selection để chọn cặp cha mẹ.
   3. Crossover – Order Crossover OX1 (trên interior).
   4. Mutation  – 2-opt / Swap / Insertion (trên interior).
-  5. Smart Repair – xóa POI có tỷ lệ Score/Time kém nhất.
-  6. Diversity – loại con trùng lặp, thay bằng cá thể random.
-  7. Evaluate  – tính fitness cho con mới.
+  5. Smart Repair – loại bỏ các POI có tỷ lệ Score/Time tệ nhất.
+  6. Diversity – thay thế các con trùng lặp bằng các cá thể ngẫu nhiên.
+  7. Evaluate  – tính toán fitness cho các con mới.
   8. Replace   – thay thế quần thể, sắp xếp, lặp lại.
 
 Nguyên tắc "Depot-Safe":
-  Mọi toán tử GA đều CHỈ thao tác trên "interior" = route[1:-1].
-  Depot được gắn lại sau khi xử lý xong.
+  Tất cả các toán tử GA CHỈ tác động lên phân đoạn "interior" = route[1:-1].
+  Depot được gắn lại sau khi xử lý.
 
 ★ ABLATION FLAGS ★
-  Hỗ trợ tắt/bật từng thành phần để đánh giá đóng góp (Ablation Study).
+  Hỗ trợ bật/tắt từng thành phần để đánh giá (Ablation Study).
 """
 
 import random
@@ -64,7 +64,7 @@ from app.core.config import (
 )
 
 
-class HybridGeneticAlgorithm:
+class MemeticAlgorithm:
     def __init__(
         self,
         user_prefs: UserPreferences,
@@ -179,7 +179,7 @@ class HybridGeneticAlgorithm:
         duplicates_replaced: int,
     ) -> None:
         print(
-            f"[HGA] Gen {gen:>3}/{self.generations} | "
+            f"[MA] Gen {gen:>3}/{self.generations} | "
             f"Best = {best_fit:8.2f} | "
             f"Avg = {avg_fit:8.2f} | "
             f"Unique = {unique_routes:>2}/{self.population_size} | "
@@ -263,7 +263,7 @@ class HybridGeneticAlgorithm:
             self.population[i] = ind
         self.population.sort(key=lambda ind: ind.fitness, reverse=True)
 
-        print("[HGA] Population initialized and evaluated.")
+        print("[MA] Population initialized and evaluated.")
         print(f"      Best fitness  = {self.population[0].fitness:.2f}")
         print(f"      Worst fitness = {self.population[-1].fitness:.2f}")
         return self.population
@@ -330,7 +330,7 @@ class HybridGeneticAlgorithm:
     # ══════════════════════════════════════════════════════════════════════════
     def run(self) -> OptimizationResponse:
         """
-        Chạy vòng lặp tiến hóa chính của Hybrid GA.
+        Chạy vòng lặp tiến hóa chính của Thuật toán Memetic.
 
         ★ EARLY STOPPING ★
           Nếu best fitness không cải thiện (>= threshold) trong
@@ -444,10 +444,10 @@ class HybridGeneticAlgorithm:
             # ── Early Stopping Check ──────────────────────────────────────────
             if gens_without_improvement >= self.stagnation_limit:
                 print(
-                    f"\n[HGA] ** EARLY STOPPING ** "
-                    f"Best fitness khong cai thien trong "
-                    f"{self.stagnation_limit} the he lien tiep. "
-                    f"Dung tai gen {gen + 1}/{self.generations}."
+                    f"\n[MA] ** EARLY STOPPING ** "
+                    f"Best fitness failed to improve in "
+                    f"{self.stagnation_limit} consecutive generations. "
+                    f"Stopped at gen {gen + 1}/{self.generations}."
                 )
                 break
 
@@ -457,7 +457,7 @@ class HybridGeneticAlgorithm:
         self.actual_gens = actual_gens
         self.best_individual = best_ever
 
-        print(f"\n[HGA] === FINAL RESULT ===")
+        print(f"\n[MA] === FINAL RESULT ===")
         print(f"      Generations run   = {actual_gens}/{self.generations}")
         print(f"      Best-ever fitness = {best_ever.fitness:.2f}")
         print(f"      Total wait time   = {best_ever.total_wait:.1f}")

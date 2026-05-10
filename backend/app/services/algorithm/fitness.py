@@ -13,11 +13,11 @@ from app.core.config import (
 
 
 # =============================================================================
-#  DISTANCE MATRIX  (O(1) lookup – pre-computed at startup)
+#  MA TRẬN KHOẢNG CÁCH (O(1) lookup – tính toán trước khi khởi động)
 # =============================================================================
 #
 #  Thay vì gọi math.sqrt() hàng triệu lần trong quá trình GA, ta tính
-#  trước ma trận khoảng cách N×N một lần duy nhất khi load dữ liệu.
+#  trước ma trận khoảng cách N×N một lần duy nhất khi nạp dữ liệu.
 #  Mọi tra cứu sau đó chỉ mất O(1) (truy cập mảng 2D).
 #  Với 101 POI → ma trận 101×101 = ~10 201 giá trị float ≈ 80 KB RAM.
 #
@@ -28,26 +28,26 @@ _DIST_MATRIX: Optional[list[list[float]]] = None
 
 
 def euclidean_distance(p1: POI, p2: POI) -> float:
-    """Euclidean distance between two POIs in coordinate units."""
+    """Tính khoảng cách Euclidean giữa hai POI theo tọa độ."""
     return math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2)
 
 
 def build_distance_matrix(pois: List[POI]) -> list[list[float]]:
     """
-    Pre-compute the full N×N Euclidean distance matrix.
+    Tính toán trước ma trận khoảng cách Euclidean N×N.
 
-    Must be called ONCE at startup (after loading POIs).
-    Subsequent calls to get_travel_time() will use O(1) lookups.
+    Phải được gọi MỘT LẦN khi khởi động (sau khi nạp POI).
+    Các lần gọi get_travel_time() sau đó sẽ sử dụng tra cứu O(1).
 
     Parameters
     ----------
     pois : list[POI]
-        All POIs (including depot). POI ids must be 0..N-1.
+        Tất cả các POI (bao gồm cả depot). ID của POI phải từ 0..N-1.
 
     Returns
     -------
     list[list[float]]
-        2D matrix where matrix[i][j] = Euclidean distance from POI i to POI j.
+        Ma trận 2D trong đó matrix[i][j] là khoảng cách Euclidean từ POI i đến POI j.
     """
     global _DIST_MATRIX
     n = len(pois)
@@ -71,12 +71,12 @@ def build_distance_matrix(pois: List[POI]) -> list[list[float]]:
 
 def get_travel_time(p1: POI, p2: POI) -> float:
     """
-    Travel time between two POIs.
-    For Solomon benchmarks, travel time == Euclidean distance
-    (speed = 1 unit/time-unit).
+    Thời gian di chuyển giữa hai POI.
+    Đối với Solomon benchmarks, thời gian di chuyển == khoảng cách Euclidean
+    (tốc độ = 1 đơn vị/đơn vị thời gian).
 
-    Uses pre-computed distance matrix for O(1) lookup.
-    Falls back to direct calculation if matrix is not yet initialized.
+    Sử dụng ma trận khoảng cách đã tính toán trước để tra cứu O(1).
+    Sẽ tính toán trực tiếp nếu ma trận chưa được khởi tạo.
     """
     if _DIST_MATRIX is not None:
         return _DIST_MATRIX[p1.id][p2.id]
@@ -85,21 +85,21 @@ def get_travel_time(p1: POI, p2: POI) -> float:
 
 
 # =============================================================================
-#  CONSTRAINT CHECKING  (TOPTW feasibility)
+#  KIỂM TRA RÀNG BUỘC (Tính khả thi của TOPTW)
 # =============================================================================
 
 def check_constraints(route: list[POI], user_prefs: UserPreferences) -> bool:
     """
-    Validate whether a COMPLETE route [Depot, ..., Depot] satisfies all
-    TOPTW constraints:
-      1. Time Windows  – arrive at each POI before its close_time.
-      2. Max Tour Time – return to depot before end_time.
-      3. Budget        – total price of visited POIs ≤ user_prefs.budget.
+    Kiểm tra xem một lộ trình HOÀN CHỈNH [Depot, ..., Depot] có thỏa mãn tất cả
+    các ràng buộc của TOPTW hay không:
+      1. Khung thời gian (Time Windows) – đến mỗi POI trước giờ đóng cửa (close_time).
+      2. Thời gian hành trình tối đa – quay lại depot trước giờ kết thúc (end_time).
+      3. Ngân sách (Budget) – tổng giá vé các POI đã ghé ≤ user_prefs.budget.
 
     ĐƠN VỊ: Mọi phép tính bên trong dùng PHÚT (Solomon time units).
-    User input (giờ) được chuyển qua start_time_minutes / end_time_minutes.
+    Dữ liệu đầu vào (giờ) được chuyển qua start_time_minutes / end_time_minutes.
 
-    Returns True if ALL constraints are satisfied, False otherwise.
+    Trả về True nếu TẤT CẢ các ràng buộc được thỏa mãn, ngược lại là False.
     """
     if len(route) < 2:
         return False  # Must at least have [Depot, Depot]
@@ -141,13 +141,13 @@ def check_constraints(route: list[POI], user_prefs: UserPreferences) -> bool:
 def try_add_poi(route: list[POI], candidate: POI,
                 user_prefs: UserPreferences) -> bool:
     """
-    Check if `candidate` can be *inserted just before the trailing Depot*
-    while keeping the route feasible.
+    Kiểm tra xem `candidate` có thể được *chèn ngay trước Depot cuối*
+    mà vẫn giữ cho lộ trình khả thi hay không.
     
-    The route is assumed to be [Depot, ..., (last‐visited)] WITHOUT
-    the trailing Depot yet (the depot is appended temporarily for checking).
+    Lộ trình được giả định là [Depot, ..., (điểm ghé cuối)] CHƯA có
+    Depot kết thúc (depot sẽ được thêm tạm thời để kiểm tra).
     
-    Returns True if the route [*route, candidate, Depot] satisfies constraints.
+    Trả về True nếu lộ trình [*route, candidate, Depot] thỏa mãn các ràng buộc.
     """
     depot = route[0]  # Depot is always the first element
     test_route = route + [candidate, depot]
@@ -155,7 +155,7 @@ def try_add_poi(route: list[POI], candidate: POI,
 
 
 # =============================================================================
-#  FITNESS EVALUATION
+#  ĐÁNH GIÁ FITNESS
 # =============================================================================
 #  Hệ số phạt được định nghĩa tập trung tại: app/core/config.py
 #  PENALTY_LATE_ARRIVAL, PENALTY_LATE_RETURN, PENALTY_BUDGET, PENALTY_WAIT
@@ -166,7 +166,7 @@ def try_add_poi(route: list[POI], candidate: POI,
 def calculate_fitness(ind, user_prefs: UserPreferences,
                       wait_penalty_weight: float = PENALTY_WAIT) -> float:
     """
-    Evaluate fitness of an Individual.
+    Đánh giá fitness của một cá thể (Individual).
 
     Fitness = Σ (base_score × interest_weight) − penalties.
 
@@ -182,11 +182,11 @@ def calculate_fitness(ind, user_prefs: UserPreferences,
         Hệ số phạt thời gian chờ (mặc định 0.2).
         Đặt = 0.0 để tắt penalty chờ (ablation study).
 
-    Penalties cover:
-      • Time-window violation  – arrive after close_time       (×100.0)
-      • Late return to depot   – return after end_time          (×100.0)
-      • Budget overrun         – total price > budget           (× 0.5)
-      • Waiting time           – arrive before open_time        (× wait_penalty_weight)
+    Các hình phạt (Penalties) bao gồm:
+      • Vi phạm khung thời gian – đến sau close_time       (×100.0)
+      • Về depot trễ          – quay lại sau end_time      (×100.0)
+      • Vượt ngân sách        – tổng chi phí > budget      (× 0.5)
+      • Thời gian chờ         – đến trước open_time        (× wait_penalty_weight)
         → Ép GA sắp xếp thứ tự POI sao cho đến nơi là vào chơi luôn,
           tránh bắt du khách chờ ngoài cửa.
     """

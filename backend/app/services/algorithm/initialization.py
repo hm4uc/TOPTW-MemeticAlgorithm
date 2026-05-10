@@ -1,11 +1,11 @@
 """
-Population Initialization for the Hybrid Genetic Algorithm (HGA).
+Khởi tạo quần thể cho Thuật toán Memetic (MA).
 
-Implements two strategies from Botelho et al. (2010) and Labadie et al. (2012):
-  • Strategy 1 – Randomized Insertion Heuristic  (80% of population, 80 individuals)
-  • Strategy 2 – Pure Random Initialization        (20% of population, 20 individuals)
+Triển khai hai chiến lược từ Botelho et al. (2010) và Labadie et al. (2012):
+  • Chiến lược 1 – Heuristic chèn ngẫu nhiên (80% quần thể, 80 cá thể)
+  • Chiến lược 2 – Khởi tạo ngẫu nhiên thuần túy (20% quần thể, 20 cá thể)
 
-Total population size: 100 (fixed).
+Tổng kích thước quần thể: 100 (cố định).
 """
 
 import random
@@ -21,7 +21,7 @@ from app.services.algorithm.fitness import (
 
 
 # =============================================================================
-#  Strategy 1: Randomized Insertion Heuristic  (Labadie desirability ratio)
+#  Chiến lược 1: Heuristic chèn ngẫu nhiên (Tỷ lệ ưu tiên Labadie)
 # =============================================================================
 
 def _labadie_ratio(
@@ -30,7 +30,7 @@ def _labadie_ratio(
     user_prefs: UserPreferences,
 ) -> float:
     """
-    Labadie desirability ratio (baseline).
+    Tỷ lệ ưu tiên Labadie (baseline).
 
     Công thức GỐC (Labadie 2012):
         ratio = (POI.score × interest_weight) / distance(current, POI)
@@ -63,17 +63,16 @@ def _create_heuristic_individual(
     user_prefs: UserPreferences,
 ) -> Individual:
     """
-    Build ONE individual using the Randomized Insertion Heuristic:
-      1. Start with route = [Depot].
-      2. Maintain a set of unvisited POIs (all non-depot POIs).
-      3. Repeat:
-         a. Filter unvisited POIs → keep only those passing `try_add_poi`.
-         b. Compute Labadie ratio for each valid candidate.
-         c. Sort descending → build RCL from Top-k.
-         d. Pick one random POI from the RCL → append to route.
-         e. Update current_time (travel + wait + service).
-      4. When no more valid POIs can be added, append Depot and return.
-
+    Xây dựng MỘT cá thể bằng Heuristic chèn ngẫu nhiên:
+      1. Bắt đầu với lộ trình = [Depot].
+      2. Duy trì một tập hợp các POI chưa ghé (tất cả các POI không phải depot).
+      3. Lặp lại:
+         a. Lọc các POI chưa ghé → chỉ giữ lại những POI vượt qua `try_add_poi`.
+         b. Tính tỷ lệ Labadie cho mỗi ứng viên hợp lệ.
+         c. Sắp xếp giảm dần → xây dựng RCL từ Top-k.
+         d. Chọn ngẫu nhiên một POI từ RCL → thêm vào lộ trình.
+         e. Cập nhật current_time (travel + wait + service).
+      4. Khi không còn POI hợp lệ nào có thể thêm vào, thêm Depot và trả về.
     """
     route: List[POI] = [depot]
     unvisited = {p.id for p in pois if p.id != depot.id}
@@ -111,7 +110,7 @@ def _create_heuristic_individual(
 
 
 # =============================================================================
-#  Strategy 2: Pure Random Initialization
+#  Chiến lược 2: Khởi tạo ngẫu nhiên thuần túy
 # =============================================================================
 
 def _create_random_individual(
@@ -120,11 +119,11 @@ def _create_random_individual(
     user_prefs: UserPreferences,
 ) -> Individual:
     """
-    Build ONE individual using Pure Random insertion:
-      1. Start with route = [Depot].
-      2. Shuffle all non-depot POIs randomly.
-      3. Iterate: if adding the POI satisfies constraints, append it.
-      4. When done, append Depot and return.
+    Xây dựng MỘT cá thể bằng cách chèn ngẫu nhiên thuần túy:
+      1. Bắt đầu với lộ trình = [Depot].
+      2. Xáo trộn tất cả các POI không phải depot một cách ngẫu nhiên.
+      3. Lặp lại: nếu việc thêm POI thỏa mãn các ràng buộc, hãy thêm nó.
+      4. Khi hoàn tất, thêm Depot và trả về.
     """
     route: List[POI] = [depot]
     candidates = [p for p in pois if p.id != depot.id]
@@ -140,7 +139,7 @@ def _create_random_individual(
 
 
 # =============================================================================
-#  PUBLIC API: Generate Full Initial Population
+#  PUBLIC API: Tạo quần thể ban đầu đầy đủ
 # =============================================================================
 
 def initialize_population(
@@ -149,32 +148,32 @@ def initialize_population(
     use_heuristic_init: bool = True,
 ) -> List[Individual]:
     """
-    Generate the initial population of 100 individuals.
+    Tạo quần thể ban đầu gồm 100 cá thể.
 
     Chế độ mặc định (use_heuristic_init=True):
-      • 80 via Randomized Insertion Heuristic  (high quality + diversity)
-      • 20 via Pure Random                     (exploration / diversity)
+      • 80 thông qua Heuristic chèn ngẫu nhiên (chất lượng cao + đa dạng)
+      • 20 thông qua ngẫu nhiên thuần túy (khám phá / đa dạng)
 
     Chế độ ablation (use_heuristic_init=False):
-      • 100 via Pure Random  (để đánh giá đóng góp của heuristic init)
+      • 100 thông qua ngẫu nhiên thuần túy (để đánh giá đóng góp của khởi tạo heuristic)
 
-    Every route is guaranteed to:
-      ✓ Start and end at the Depot (POI id == 0)
-      ✓ Pass check_constraints before any POI is appended
+    Mọi lộ trình được đảm bảo:
+      ✓ Bắt đầu và kết thúc tại Depot (POI id == 0)
+      ✓ Vượt qua check_constraints trước khi bất kỳ POI nào được thêm vào
 
     Parameters
     ----------
     pois : list[POI]
-        All available Points of Interest (including the depot at index 0).
+        Tất cả các POI hiện có (bao gồm cả depot ở chỉ số 0).
     user_prefs : UserPreferences
-        User constraints (budget, time window, interests).
+        Ràng buộc người dùng (ngân sách, khung thời gian, sở thích).
     use_heuristic_init : bool
         True → 80% Heuristic + 20% Random (mặc định).
         False → 100% Random (ablation study).
     Returns
     -------
     list[Individual]
-        Population of size 100.
+        Quần thể có kích thước 100.
     """
     depot = next((p for p in pois if p.id == 0), None)
     if depot is None:

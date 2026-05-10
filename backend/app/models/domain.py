@@ -1,8 +1,8 @@
 class POI:
     """
-    Represents a Point of Interest (or Depot when id == 0).
-    Coordinates use Euclidean x/y matching Solomon benchmark format.
-    Time fields are in Solomon's integer time units.
+    Đại diện cho một Điểm tham quan (POI) hoặc Depot (khi id == 0).
+    Tọa độ sử dụng hệ tọa độ Euclidean x/y khớp với định dạng benchmark Solomon.
+    Các trường thời gian tính bằng đơn vị thời gian nguyên của Solomon.
     """
 
     def __init__(self, id: int, x: float, y: float, score: float,
@@ -24,8 +24,8 @@ class POI:
 
 class Individual:
     """
-    Represents a single solution (chromosome) in the GA population.
-    A route is an ordered list of POI objects: [Depot, POI_a, POI_b, ..., Depot].
+    Đại diện cho một giải pháp (nhiễm sắc thể) trong quần thể GA.
+    Một lộ trình (route) là danh sách thứ tự các đối tượng POI: [Depot, POI_a, POI_b, ..., Depot].
     """
 
     def __init__(self, route: list[POI] = None):
